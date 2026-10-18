@@ -1,3 +1,4 @@
+import type { MensajeChat } from '../shared/ai'
 import { app } from 'electron'
 import {
   existsSync,
@@ -18,6 +19,7 @@ export interface ArchivoProyecto {
   formatoVersion: number
   proyecto: unknown
   historial: unknown
+  mensajesChat?: MensajeChat[]
 }
 
 export interface InfoRecuperacion {
@@ -25,6 +27,7 @@ export interface InfoRecuperacion {
   ruta: string | null
   proyecto: unknown
   historial: unknown
+  mensajesChat?: MensajeChat[]
   fecha: string | null
 }
 
@@ -74,6 +77,7 @@ export function leerRecuperacion(idProyecto: string): InfoRecuperacion {
       ruta,
       proyecto: archivo.proyecto,
       historial: archivo.historial,
+      mensajesChat: archivo.mensajesChat,
       fecha: statSync(ruta).mtime.toISOString()
     }
   } catch {

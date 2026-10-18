@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { Icono } from './Icono'
 
 export interface AccionMenu {
   etiqueta: string
@@ -36,7 +37,7 @@ export function MenuAcciones({ etiqueta, acciones, primario = false }: {
     <button ref={disparador} type="button" className={primario ? 'primario' : ''} aria-haspopup="menu" aria-expanded={abierto} aria-controls={id}
       onClick={() => setAbierto(!abierto)} onKeyDown={(e) => {
         if (!abierto && ['ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); setAbierto(true) }
-      }}>{etiqueta}<span aria-hidden="true" className="chevron">⌄</span></button>
+      }}>{etiqueta}<Icono nombre="desplegar" /></button>
     {abierto && <div id={id} className="menu-opciones" role="menu" aria-label={etiqueta}>
       {acciones.map((accion) => <button key={accion.etiqueta} type="button" role="menuitem" disabled={accion.deshabilitada} onClick={() => {
         setAbierto(false); disparador.current?.focus(); accion.ejecutar()

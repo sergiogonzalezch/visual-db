@@ -3,6 +3,7 @@ import type {
   BorradorImportacionIA,
   CapacidadesProveedor,
   Configuracion,
+  MensajeChat,
   RespuestaChatIA,
   RespuestaRevisionIA,
   ResumenConsumo,
@@ -38,6 +39,7 @@ const api = {
     ruta: string | null
     proyecto: unknown
     historial: unknown
+    mensajesChat?: MensajeChat[]
     fecha: string | null
   }> => ipcRenderer.invoke('recuperacion:leer', idProyecto),
   borrarRecuperacion: (idProyecto: string): Promise<void> =>

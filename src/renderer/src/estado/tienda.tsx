@@ -1,3 +1,4 @@
+import { chatInicial } from '../presentacion/chat-proyecto'
 import {
   createContext,
   ReactNode,
@@ -69,10 +70,13 @@ interface Tienda {
   sucio: boolean
   seleccion: Seleccion
   herramienta: Herramienta
+  panelAbierto: boolean
+  setPanelAbierto: (abierto: boolean) => void
   pestana: Pestana
   vista: 'actual' | 'propuesto'
   propuestaEnComparacion: string | null
   mensajesChat: MensajeChat[]
+  sesionChat: number
   estadoIA: EstadoIA
   hallazgos: HallazgoLocal[]
   resultadoNormalizacion: ResultadoNormalizacion | null
@@ -141,7 +145,7 @@ interface Tienda {
   limpiarConsumo: () => Promise<void>
   restaurarRecuperacion: (proyecto: Proyecto, historial: Historial) => void
   descartarRecuperacion: () => void
-  recuperacionPendiente: { fecha: string; proyecto: Proyecto; historial: Historial } | null
+  recuperacionPendiente: { fecha: string; proyecto: Proyecto; historial: Historial; mensajesChat?: MensajeChat[] } | null
   actualizarPropuesta: (id: string, parche: Partial<Pick<Propuesta, 'titulo' | 'explicacion' | 'operaciones' | 'supuestos' | 'preguntas' | 'resultado' | 'contrapartidas' | 'fundamento'>>) => void
 }
 
@@ -160,18 +164,33 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   const [sucio, setSucio] = useState(false)
   const [seleccion, setSeleccion] = useState<Seleccion>(null)
   const [herramienta, setHerramienta] = useState<Herramienta>('seleccion')
-  const [pestana, setPestana] = useState<Pestana>('propiedades')
+  const [panelAbierto, setPanelAbierto] = useState(false)
+  const [pestana, setPestanaActiva] = useState<Pestana>('propiedades')
+  const setPestana = useCallback((valor: Pestana) => {
+    setPestanaActiva(valor)
+    setPanelAbierto(true)
+  }, [])
   const [seccionRevision, setSeccionRevision] = useState<'reglas' | 'propuestas'>('reglas')
   const [vista, setVista] = useState<'actual' | 'propuesto'>('actual')
   const [propuestaEnComparacion, setPropuestaEnComparacion] = useState<string | null>(null)
-  const [mensajesChat, setMensajesChat] = useState<MensajeChat[]>([
-    {
-      rol: 'sistema',
-      contenido:
-        'El asistente explica el diseño, responde preguntas y prepara propuestas. Ningún cambio se aplica sin tu aprobación. El chat requiere un proveedor configurado.',
-      fecha: new Date().toISOString()
-    }
-  ])
+  const [mensajesChat, establecerMensajesChat] = useState<MensajeChat[]>(chatInicial)
+  const mensajesChatRef = useRef(mensajesChat)
+  const sesionChat = useRef(0)
+  const [versionChat, setVersionChat] = useState(0)
+  const setMensajesChat = useCallback((valor: MensajeChat[] | ((prev: MensajeChat[]) => MensajeChat[])) => {
+    const siguientes = typeof valor === 'function' ? valor(mensajesChatRef.current) : valor
+    mensajesChatRef.current = siguientes
+    establecerMensajesChat(siguientes)
+    setVersionChat((prev) => prev + 1)
+    setSucio(true)
+  }, [])
+  const cargarChat = useCallback((valor?: unknown) => {
+    sesionChat.current += 1
+    const mensajes = chatInicial(valor)
+    mensajesChatRef.current = mensajes
+    establecerMensajesChat(mensajes)
+    setEstadoIA({ revisando: false, chateando: false, error: null })
+  }, [])
   const [estadoIA, setEstadoIA] = useState<EstadoIA>({ revisando: false, chateando: false, error: null })
   const [hallazgos, setHallazgos] = useState<HallazgoLocal[]>([])
   const [resultadoNormalizacion, setResultadoNormalizacion] = useState<ResultadoNormalizacion | null>(null)
@@ -183,7 +202,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   const [aviso, setAviso] = useState<string | null>(null)
   const [entidadOrigenRelacion, setEntidadOrigenRelacion] = useState<string | null>(null)
   const [recuperacionPendiente, setRecuperacionPendiente] =
-    useState<{ fecha: string; proyecto: Proyecto; historial: Historial } | null>(null)
+    useState<{ fecha: string; proyecto: Proyecto; historial: Historial; mensajesChat?: MensajeChat[] } | null>(null)
 
   const refrescarConsumo = useCallback(async () => {
     try {
@@ -267,7 +286,8 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     (p: Proyecto = proyectoRef.current, h: Historial = historialRef.current) => ({
       formatoVersion: p.formatoVersion,
       proyecto: p,
-      historial: h
+      historial: h,
+      mensajesChat: mensajesChatRef.current
     }),
     []
   )
@@ -279,8 +299,11 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       return
     }
     try {
-      await api().guardarProyecto(actual, empaquetar())
-      setSucio(false)
+      const archivo = empaquetar()
+      const sesion = sesionChat.current
+      await api().guardarProyecto(actual, archivo)
+      if (sesion !== sesionChat.current) return
+      if (archivo.proyecto === proyectoRef.current && archivo.mensajesChat === mensajesChatRef.current) setSucio(false)
       await api().guardarAjustes(
         {
           ...(ajustes ?? (await api().obtenerAjustes())),
@@ -295,10 +318,13 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
 
   const guardarComo = useCallback(async () => {
     try {
-      const destino = await api().guardarComoDialogo(empaquetar(), proyectoRef.current.nombre)
+      const archivo = empaquetar()
+      const sesion = sesionChat.current
+      const destino = await api().guardarComoDialogo(archivo, archivo.proyecto.nombre)
       if (!destino) return
+      if (sesion !== sesionChat.current) return
       setRuta(destino)
-      setSucio(false)
+      if (archivo.proyecto === proyectoRef.current && archivo.mensajesChat === mensajesChatRef.current) setSucio(false)
       const actuales = ajustes ?? (await api().obtenerAjustes())
       await api().guardarAjustes(
         { ...actuales, ultimoProyecto: { ruta: destino, id: proyectoRef.current.id } },
@@ -314,16 +340,13 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     try {
       const resultado = await api().abrirProyectoDialogo()
       if (!resultado) return
-      const archivo = resultado.archivo as { proyecto: Proyecto; historial: Historial }
+      const archivo = resultado.archivo as { proyecto: Proyecto; historial: Historial; mensajesChat?: MensajeChat[] }
       setProyecto(archivo.proyecto)
       setHistorial(archivo.historial ?? historialVacio())
       setRuta(resultado.ruta)
       setSucio(false)
       setSeleccion(null)
-      setMensajesChat((prev) => [
-        ...prev,
-        { rol: 'sistema', contenido: `Proyecto abierto: ${archivo.proyecto.nombre}`, fecha: new Date().toISOString() }
-      ])
+      cargarChat(archivo.mensajesChat)
       await api().guardarAjustes(
         { ...(ajustes ?? (await api().obtenerAjustes())), ultimoProyecto: { ruta: resultado.ruta, id: archivo.proyecto.id } },
         null
@@ -335,6 +358,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
 
   const nuevo = useCallback(() => {
     const nombre = `Proyecto ${new Date().toLocaleDateString('es-ES')}`
+    cargarChat()
     setProyecto(crearProyectoVacio(nombre))
     setHistorial(historialVacio())
     setRuta(null)
@@ -523,6 +547,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   }, [])
 
   const solicitarRevision = useCallback(async () => {
+    const sesion = sesionChat.current
     setPestana('revision')
     setSeccionRevision('propuestas')
     setEstadoIA((prev) => ({ ...prev, revisando: true, error: null }))
@@ -545,6 +570,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
           .join(' | ')
       }
       const respuesta = await api().revisar(solicitud)
+      if (sesion !== sesionChat.current) return
       const nuevas: Propuesta[] = respuesta.propuestas.map((entrada) =>
         crearPropuesta(proyectoRef.current, {
           categoria: entrada.categoria,
@@ -575,6 +601,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       setEstadoIA((prev) => ({ ...prev, revisando: false }))
       void refrescarConsumo()
     } catch (error) {
+      if (sesion !== sesionChat.current) return
       setEstadoIA((prev) => ({ ...prev, revisando: false, error: (error as Error).message }))
       setMensajesChat((prev) => [
         ...prev,
@@ -607,6 +634,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   }, [])
 
   const discutirPropuesta = useCallback(async (id: string, texto: string) => {
+    const sesion = sesionChat.current
     const propuesta = proyectoRef.current.propuestas.find((p) => p.id === id)
     if (!propuesta) return
     const mensajeUsuario: MensajeChat = {
@@ -630,6 +658,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         },
         propuestaContexto: propuesta
       })
+      if (sesion !== sesionChat.current) return
       setMensajesChat((prev) => [
         ...prev,
         {
@@ -642,6 +671,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       setEstadoIA((prev) => ({ ...prev, chateando: false }))
       void refrescarConsumo()
     } catch (error) {
+      if (sesion !== sesionChat.current) return
       setEstadoIA((prev) => ({ ...prev, chateando: false, error: (error as Error).message }))
       setMensajesChat((prev) => [
         ...prev,
@@ -656,6 +686,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
 
   const chatear = useCallback(
     async (texto: string) => {
+      const sesion = sesionChat.current
       const mensaje: MensajeChat = { rol: 'usuario', contenido: texto, fecha: new Date().toISOString() }
       const siguiente = [...mensajesChat, mensaje]
       setMensajesChat(siguiente)
@@ -673,6 +704,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
             versionDiseno: proyectoRef.current.versionDiseno
           }
         })
+        if (sesion !== sesionChat.current) return
         setMensajesChat((prev) => [
           ...prev,
           { rol: 'asistente', contenido: respuesta.contenido, fecha: new Date().toISOString() }
@@ -680,6 +712,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         setEstadoIA((prev) => ({ ...prev, chateando: false }))
         void refrescarConsumo()
       } catch (error) {
+        if (sesion !== sesionChat.current) return
         setEstadoIA((prev) => ({ ...prev, chateando: false, error: (error as Error).message }))
         setMensajesChat((prev) => [
           ...prev,
@@ -721,12 +754,13 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   }, [])
 
   const restaurarRecuperacion = useCallback((proyectoRecuperado: Proyecto, historialRecuperado: Historial) => {
+    cargarChat(recuperacionPendiente?.mensajesChat)
     setProyecto(proyectoRecuperado)
     setHistorial(historialRecuperado)
     setSucio(true)
     setRecuperacionPendiente(null)
     setAviso('Se restauró la copia de recuperación.')
-  }, [])
+  }, [recuperacionPendiente, cargarChat])
 
   const descartarRecuperacion = useCallback(async () => {
     if (recuperacionPendiente) {
@@ -799,7 +833,8 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       if (config.ultimoProyecto?.ruta) {
         const resultado = await api().abrirProyectoRuta(config.ultimoProyecto.ruta)
         if (!cancelado && resultado.archivo) {
-          const archivo = resultado.archivo as { proyecto: Proyecto; historial: Historial }
+          const archivo = resultado.archivo as { proyecto: Proyecto; historial: Historial; mensajesChat?: MensajeChat[] }
+          cargarChat(archivo.mensajesChat)
           setProyecto(archivo.proyecto)
           setHistorial(archivo.historial ?? historialVacio())
           setRuta(resultado.ruta ?? null)
@@ -812,7 +847,8 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       setRecuperacionPendiente({
         fecha: info.fecha ?? '',
         proyecto: info.proyecto as Proyecto,
-        historial: (info.historial as Historial) ?? historialVacio()
+        historial: (info.historial as Historial) ?? historialVacio(),
+        mensajesChat: info.mensajesChat
       })
     })()
     return () => {
@@ -827,7 +863,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       void api().escribirRecuperacion(proyecto.id, empaquetar())
     }, 3000)
     return () => clearTimeout(temporizador)
-  }, [sucio, proyecto, empaquetar])
+  }, [sucio, proyecto, versionChat, empaquetar])
 
   // atajos de teclado globales
   useEffect(() => {
@@ -885,9 +921,12 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       seleccion,
       herramienta,
       pestana,
+      panelAbierto,
+      setPanelAbierto,
       vista,
       propuestaEnComparacion,
       mensajesChat,
+      sesionChat: sesionChat.current,
       estadoIA,
       hallazgos,
       resultadoNormalizacion,
@@ -960,6 +999,8 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       seleccion,
       herramienta,
       pestana,
+      panelAbierto,
+      setPanelAbierto,
       vista,
       propuestaEnComparacion,
       mensajesChat,

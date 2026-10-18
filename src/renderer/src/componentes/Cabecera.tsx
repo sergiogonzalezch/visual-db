@@ -1,5 +1,6 @@
 import { usePuedeDeshacer, usePuedeRehacer, useTienda } from '../estado/tienda'
 import { MenuAcciones } from './MenuAcciones'
+import { Icono } from './Icono'
 
 export function Cabecera(): JSX.Element {
   const tienda = useTienda()
@@ -19,7 +20,7 @@ export function Cabecera(): JSX.Element {
         { etiqueta: 'Imagen…', detalle: 'Interpretar con el modelo configurado', ejecutar: tienda.importarImagen },
         { etiqueta: 'Markdown…', ejecutar: tienda.importarMarkdown }
       ]} />
-      <div className="grupo-deshacer" aria-label="Historial de edición"><button disabled={!puedeDeshacer} onClick={tienda.deshacer} title="Deshacer · Ctrl+Z" aria-label="Deshacer">↶</button><button disabled={!puedeRehacer} onClick={tienda.rehacer} title="Rehacer · Ctrl+Y" aria-label="Rehacer">↷</button></div>
+      <div className="grupo-deshacer" aria-label="Historial de edición"><button disabled={!puedeDeshacer} onClick={tienda.deshacer} title="Deshacer · Ctrl+Z" aria-label="Deshacer"><Icono nombre="deshacer" /></button><button disabled={!puedeRehacer} onClick={tienda.rehacer} title="Rehacer · Ctrl+Y" aria-label="Rehacer"><Icono nombre="rehacer" /></button></div>
       <MenuAcciones etiqueta={tienda.estadoIA.revisando ? 'Revisando con IA…' : 'Revisar'} primario acciones={[
         { etiqueta: 'Revisar reglas', detalle: 'Estructura y normalización · sin IA ni tokens', ejecutar: tienda.analizar },
         { etiqueta: 'Revisar con IA', detalle: 'Análisis y propuestas del modelo seleccionado', deshabilitada: tienda.estadoIA.revisando, ejecutar: () => void tienda.solicitarRevision() }

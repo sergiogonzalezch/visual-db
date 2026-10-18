@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
+import iconoAplicacion from '../../resources/icon.png?asset'
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import {
@@ -47,6 +48,7 @@ function crearVentana(): void {
     minWidth: 1024,
     minHeight: 640,
     title: 'Visual BD',
+    icon: iconoAplicacion,
     backgroundColor: '#12151c',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -316,6 +318,7 @@ function registrarIPC(): void {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === 'darwin') app.dock?.setIcon(iconoAplicacion)
   construirMenu()
   registrarIPC()
   crearVentana()

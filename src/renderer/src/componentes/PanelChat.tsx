@@ -5,17 +5,19 @@ import { useTienda } from '../estado/tienda'
 export function PanelChat(): JSX.Element {
   const tienda = useTienda()
   const [texto, setTexto] = useState('')
-  const finRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => { setTexto('') }, [tienda.proyecto.id, tienda.sesionChat])
+  const mensajesRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    finRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [tienda.mensajesChat])
+    if (!tienda.panelAbierto) return
+    mensajesRef.current?.scrollTo({ top: mensajesRef.current.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }, [tienda.mensajesChat, tienda.panelAbierto])
 
   return (
     <div className="chat-contenedor">
       <h2>Chat con el agente</h2>
       <div className="contexto-chat"><span className="chip">{tienda.ajustes?.proveedor.modelo || 'Sin modelo seleccionado'}</span><p className="descripcion-panel">El asistente ve el diseño y la selección actual. Conversar no aplica cambios.</p></div>
-      <div className="mensajes-chat" role="log" aria-label="Conversación con el asistente">
+      <div ref={mensajesRef} className="mensajes-chat" role="log" aria-label="Conversación con el asistente">
         {tienda.mensajesChat.map((mensaje, i) => (
           <div key={i} className={`mensaje ${mensaje.rol}`}>
             {mensaje.contenido}
@@ -29,7 +31,6 @@ export function PanelChat(): JSX.Element {
         {tienda.estadoIA.error && (
           <div className="mensaje sistema" role="alert">Error: {mensajeErrorVisible(tienda.estadoIA.error)}</div>
         )}
-        <div ref={finRef} />
       </div>
       <div className="entrada-chat" style={{ marginTop: 'auto' }}>
         <textarea aria-label="Mensaje al asistente"

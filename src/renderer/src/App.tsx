@@ -1,6 +1,6 @@
 import { useTienda } from './estado/tienda'
 import { Cabecera } from './componentes/Cabecera'
-import { Herramientas } from './componentes/Herramientas'
+import { ControlesVista, Herramientas } from './componentes/Herramientas'
 import { Lienzo } from './componentes/Lienzo'
 import { PanelDerecho } from './componentes/PanelDerecho'
 import { BarraEstado } from './componentes/BarraEstado'
@@ -17,9 +17,9 @@ export function App(): JSX.Element {
       <Cabecera />
       <div className="cuerpo">
         <main className="zona-trabajo" aria-label="Editor del modelo">
-          <Herramientas />
           <div className="zona-lienzo">
             <Lienzo />
+            <ControlesVista />
             {tienda.proyecto.diseno.entidades.length === 0 && tienda.proyecto.diseno.notas.length === 0 && tienda.herramienta === 'seleccion' && (
               <div className="bienvenida-lienzo"><section>
                 <span className="sobre-titulo">TU ESPACIO DE DISEÑO</span>
@@ -29,6 +29,7 @@ export function App(): JSX.Element {
                 <small>Imagen y Markdown disponibles en Importar</small>
               </section></div>
             )}
+            <Herramientas />
           </div>
         </main>
         <PanelDerecho />
