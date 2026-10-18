@@ -34,6 +34,8 @@ import {
 } from './ia/coordinador'
 import { importarDrawio } from './importadores/drawio-borrador'
 import { limpiarConsumo, resumenConsumo } from './ia/consumo'
+import { conectarProveedor, estadosProveedores, seleccionarModelo, borrarCredencial, revelarCredencial, reconectarActivo, invalidarConexiones } from './ia/proveedores'
+import type { ConfigProveedor, ProveedorTipo } from '@shared/ai'
 
 let ventana: BrowserWindow | null = null
 let rutaAbierta: string | null = null
@@ -106,7 +108,8 @@ function construirMenu(): void {
     {
       label: 'Revisar',
       submenu: [
-        { label: 'Solicitar revisión estructural', accelerator: 'CmdOrCtrl+R', click: () => ventana?.webContents.send('menu:revisar') }
+        { label: 'Revisar reglas', click: () => ventana?.webContents.send('menu:revisar-reglas') },
+        { label: 'Revisar con IA', accelerator: 'CmdOrCtrl+R', click: () => ventana?.webContents.send('menu:revisar') }
       ]
     },
     {
@@ -187,8 +190,24 @@ function registrarIPC(): void {
     return cargarConfiguracion()
   })
 
+  ipcMain.handle('proveedores:estados', () => estadosProveedores())
+  ipcMain.handle('proveedores:conectar', async (_e, perfil: ConfigProveedor, clave: string | null) => {
+    const resultado = await conectarProveedor(perfil, clave)
+    ventana?.webContents.send('proveedores:actualizados')
+    return resultado
+  })
+  ipcMain.handle('proveedores:modelo', (_e, tipo: ProveedorTipo, modelo: string) => seleccionarModelo(tipo, modelo))
+  ipcMain.handle('proveedores:borrar-clave', (_e, tipo: ProveedorTipo) => borrarCredencial(tipo))
+  ipcMain.handle('proveedores:revelar-clave', (_e, tipo: ProveedorTipo) => revelarCredencial(tipo))
+
   ipcMain.handle('ajustes:guardar', (_e, config: Configuracion, claveNueva: string | null): Configuracion => {
-    return guardarConfiguracion(config, claveNueva)
+    const privacidadCambiada = cargarConfiguracion().soloLocal !== config.soloLocal
+    const guardada = guardarConfiguracion(config, claveNueva)
+    if (privacidadCambiada) {
+      invalidarConexiones()
+      ventana?.webContents.send('proveedores:actualizados')
+    }
+    return guardada
   })
 
   ipcMain.handle('ajustes:capacidades', () => {
@@ -300,6 +319,8 @@ app.whenReady().then(() => {
   construirMenu()
   registrarIPC()
   crearVentana()
+  void reconectarActivo().catch(() => { /* El diálogo muestra el estado de conexión sin registrar secretos. */ })
+    .finally(() => ventana?.webContents.send('proveedores:actualizados'))
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) crearVentana()
   })

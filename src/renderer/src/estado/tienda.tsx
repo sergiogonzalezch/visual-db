@@ -128,10 +128,13 @@ interface Tienda {
   rechazarPropuesta: (id: string, nota: string | null) => void
   discutirPropuesta: (id: string, texto: string) => Promise<void>
   chatear: (texto: string) => Promise<void>
+  seccionRevision: 'reglas' | 'propuestas'
+  setSeccionRevision: (valor: 'reglas' | 'propuestas') => void
   analizar: () => void
   setMostrarConfiguracion: (valor: boolean) => void
   setMostrarHistorial: (valor: boolean) => void
   setAviso: (texto: string | null) => void
+  recargarAjustes: () => Promise<Configuracion>
   guardarAjustes: (config: Configuracion, claveNueva: string | null) => Promise<void>
   probarConexion: () => Promise<ResultadoPruebaConexion | null>
   refrescarConsumo: () => Promise<void>
@@ -158,6 +161,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   const [seleccion, setSeleccion] = useState<Seleccion>(null)
   const [herramienta, setHerramienta] = useState<Herramienta>('seleccion')
   const [pestana, setPestana] = useState<Pestana>('propiedades')
+  const [seccionRevision, setSeccionRevision] = useState<'reglas' | 'propuestas'>('reglas')
   const [vista, setVista] = useState<'actual' | 'propuesto'>('actual')
   const [propuestaEnComparacion, setPropuestaEnComparacion] = useState<string | null>(null)
   const [mensajesChat, setMensajesChat] = useState<MensajeChat[]>([
@@ -514,10 +518,13 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     const propuesta = crearPropuesta(proyectoRef.current, entrada)
     setProyecto((prev) => guardarNuevasPropuestas(prev, [propuesta]))
     setSucio(true)
+    setSeccionRevision('propuestas')
     setAviso('Propuesta creada desde el análisis local. Revísala en la pestaña Revisión; se aplica solo con tu aprobación.')
   }, [])
 
   const solicitarRevision = useCallback(async () => {
+    setPestana('revision')
+    setSeccionRevision('propuestas')
     setEstadoIA((prev) => ({ ...prev, revisando: true, error: null }))
     try {
       const solicitud = {
@@ -563,6 +570,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         }
       ])
       setPestana('revision')
+      setSeccionRevision('propuestas')
       setSucio(true)
       setEstadoIA((prev) => ({ ...prev, revisando: false }))
       void refrescarConsumo()
@@ -691,7 +699,14 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     const normalizacion = analizarNormalizacion(proyectoRef.current)
     setHallazgos(hallazgosLocales)
     setResultadoNormalizacion(normalizacion)
+    setSeccionRevision('reglas')
     setPestana('revision')
+  }, [])
+
+  const recargarAjustes = useCallback(async () => {
+    const config = await api().obtenerAjustes()
+    setAjustes(config)
+    return config
   }, [])
 
   const guardarAjustes = useCallback(async (config: Configuracion, claveNueva: string | null) => {
@@ -853,12 +868,13 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       apiPreload.onMenu('menu:importar-drawio', () => void importarDrawio()),
       apiPreload.onMenu('menu:importar-imagen', () => void importarImagen()),
       apiPreload.onMenu('menu:importar-markdown', () => void importarMarkdownFlujo()),
+      apiPreload.onMenu('menu:revisar-reglas', analizar),
       apiPreload.onMenu('menu:revisar', () => void solicitarRevision()),
       apiPreload.onMenu('menu:configuracion', () => setMostrarConfiguracion(true)),
       apiPreload.onMenu('menu:recuperacion', () => setMostrarHistorial(true))
     ]
     return () => suscripciones.forEach((s) => s())
-  }, [nuevo, abrir, guardar, guardarComo, deshacer, rehacer, importarDrawio, importarImagen, importarMarkdownFlujo, solicitarRevision])
+  }, [nuevo, abrir, guardar, guardarComo, deshacer, rehacer, importarDrawio, importarImagen, importarMarkdownFlujo, solicitarRevision, analizar])
 
   const valor = useMemo<Tienda>(
     () => ({
@@ -921,10 +937,13 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       discutirPropuesta,
       chatear,
       analizar,
+      seccionRevision,
+      setSeccionRevision,
       setMostrarConfiguracion,
       setMostrarHistorial,
       setAviso,
       guardarAjustes,
+      recargarAjustes,
       probarConexion,
       refrescarConsumo,
       limpiarConsumo,
@@ -981,7 +1000,10 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       discutirPropuesta,
       chatear,
       analizar,
+      seccionRevision,
+      setSeccionRevision,
       guardarAjustes,
+      recargarAjustes,
       probarConexion,
       refrescarConsumo,
       limpiarConsumo,

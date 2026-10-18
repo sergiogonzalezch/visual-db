@@ -1,5 +1,7 @@
+import { mensajeErrorVisible } from '../presentacion/errores'
 import { useState } from 'react'
 import { useTienda } from '../estado/tienda'
+import { Pestanas } from './Pestanas'
 import { EstadoNivel } from '../domain/normalizacion'
 
 const ETIQUETA_ESTADO: Record<EstadoNivel, { texto: string; clase: string }> = {
@@ -19,7 +21,12 @@ export function PanelRevision(): JSX.Element {
 
   return (
     <div>
-      <h2>Revisión</h2>
+      <h2>Revisión del modelo</h2>
+      <p className="descripcion-panel">Comprueba las reglas o evalúa propuestas antes de aplicarlas.</p>
+      <Pestanas id="revision-tipo" etiqueta="Resultados de revisión" opciones={[{ valor: 'reglas', etiqueta: 'Reglas' }, { valor: 'propuestas', etiqueta: `Propuestas · ${propuestas.length}` }]} valor={tienda.seccionRevision} cambiar={tienda.setSeccionRevision} />
+      <section role="tabpanel" id="revision-tipo-panel-reglas" aria-labelledby="revision-tipo-tab-reglas" hidden={tienda.seccionRevision !== 'reglas'}>
+      <div className="cabecera-seccion"><h3>Revisar reglas</h3><button onClick={tienda.analizar}>Revisar ahora</button></div>
+      <p className="descripcion-panel">Estructura y normalización en este equipo. Sin IA ni consumo de tokens.</p>
 
       <h3>Interpretación</h3>
       <div className="fila" style={{ marginBottom: 8 }}>
@@ -49,6 +56,7 @@ export function PanelRevision(): JSX.Element {
           <div className="explicacion">{ambiguedad.pregunta}</div>
           <div className="fila">
             <select
+              aria-label={ambiguedad.pregunta}
               value={ambiguedad.resolucion?.accion ?? ''}
               onChange={(e) => tienda.resolverAmbiguedad(ambiguedad.id, e.target.value ? { accion: e.target.value } : null)}
             >
@@ -83,7 +91,7 @@ export function PanelRevision(): JSX.Element {
 
       <h3>Estructura local</h3>
       {tienda.hallazgos.length === 0 ? (
-        <p className="vacio">Sin hallazgos locales. Pulsa «Validar local» en la barra superior.</p>
+        <p className="vacio">{tienda.resultadoNormalizacion ? 'No se encontraron problemas estructurales con la información declarada.' : 'Aún no has revisado las reglas. Elige Revisar → Revisar reglas para empezar.'}</p>
       ) : (
         tienda.hallazgos.map((hallazgo) => (
           <div key={hallazgo.id} className={`tarjeta-hallazgo ${hallazgo.severidad}`}>
@@ -98,14 +106,14 @@ export function PanelRevision(): JSX.Element {
       <h3>Normalización (1FN–BCNF)</h3>
       {!tienda.resultadoNormalizacion ? (
         <p className="vacio">
-          Pulsa «Validar local» para analizar la normalización con la información declarada (claves y
+          Pulsa «Revisar reglas» para analizar la normalización con la información declarada (claves y
           dependencias funcionales). Sin reglas suficientes los resultados quedan limitados.
         </p>
       ) : (
         <>
-          <div className="fila" style={{ marginBottom: 8 }}>
+          <div className="niveles-normalizacion">
             {tienda.resultadoNormalizacion.niveles.map((nivel) => (
-              <div key={nivel.nivel} className="campo" style={{ textAlign: 'center' }}>
+              <div key={nivel.nivel} className="nivel-normalizacion">
                 <div style={{ fontWeight: 700 }}>{nivel.nivel}</div>
                 <span className={`marcador ${ETIQUETA_ESTADO[nivel.estado].clase}`}>
                   {ETIQUETA_ESTADO[nivel.estado].texto}
@@ -157,10 +165,14 @@ export function PanelRevision(): JSX.Element {
         </>
       )}
 
-      <h3>Propuestas del agente</h3>
+      </section>
+      <section role="tabpanel" id="revision-tipo-panel-propuestas" aria-labelledby="revision-tipo-tab-propuestas" hidden={tienda.seccionRevision !== 'propuestas'}>
+      <h3>Propuestas</h3>
+      {tienda.estadoIA.revisando && <div className="estado-contextual" role="status"><strong>Revisando con IA…</strong><p>El modelo está preparando su análisis. El diseño actual se conserva.</p></div>}
+      {tienda.estadoIA.error && <div className="estado-contextual error" role="alert"><strong>No se pudo completar la revisión</strong><p>{mensajeErrorVisible(tienda.estadoIA.error)}</p><button onClick={() => tienda.setMostrarConfiguracion(true)}>Revisar proveedor y modelo</button></div>}
       {propuestas.length === 0 && (
         <p className="vacio">
-          Sin propuestas. Usa «Revisar» para pedirle al agente que analice el modelo; nunca modifica el
+          Sin propuestas. Usa «Revisar → Revisar con IA» para pedirle al agente que analice el modelo; nunca modifica el
           diseño sin tu aprobación.
         </p>
       )}
@@ -169,9 +181,9 @@ export function PanelRevision(): JSX.Element {
         return (
           <div key={propuesta.id} className={`tarjeta-propuesta ${abierta ? 'abierta' : ''}`}>
             <div className="fila">
-              <strong style={{ flex: 1, cursor: 'pointer' }} onClick={() => setPropuestaAbierta(abierta ? null : propuesta.id)}>
+              <button className="titulo-propuesta" aria-expanded={abierta} onClick={() => setPropuestaAbierta(abierta ? null : propuesta.id)}>
                 {propuesta.titulo}
-              </strong>
+              </button>
               <span className={`marcador ${propuesta.estado === 'aceptada' || propuesta.estado === 'aplicada' ? 'ok' : propuesta.estado === 'rechazada' ? 'error' : propuesta.estado === 'desactualizada' ? 'aviso' : 'info'}`}>
                 {propuesta.estado}
               </span>
@@ -255,8 +267,8 @@ export function PanelRevision(): JSX.Element {
                   </button>
                 </div>
                 <div className="campo" style={{ marginTop: 8 }}>
-                  <label>Discutir esta propuesta (discutir no la aprueba)</label>
-                  <textarea
+                  <label htmlFor={`discusion-${propuesta.id}`}>Discutir esta propuesta (discutir no la aprueba)</label>
+                  <textarea id={`discusion-${propuesta.id}`}
                     value={discusion}
                     placeholder="Ej: ¿Qué pasa si en lugar de separar la entidad modificamos la cardinalidad?"
                     onChange={(e) => setDiscusion(e.target.value)}
@@ -277,6 +289,7 @@ export function PanelRevision(): JSX.Element {
           </div>
         )
       })}
+      </section>
     </div>
   )
 }

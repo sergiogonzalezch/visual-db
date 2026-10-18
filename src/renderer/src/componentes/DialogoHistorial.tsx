@@ -1,3 +1,4 @@
+import { DialogoBase } from './DialogoBase'
 import { useTienda } from '../estado/tienda'
 
 export function DialogoHistorial(): JSX.Element {
@@ -6,10 +7,17 @@ export function DialogoHistorial(): JSX.Element {
   const inverso = [...historial.entradas].reverse()
 
   return (
-    <div className="dialogo-fondo">
-      <div className="dialogo">
-        <div className="cabecera-dialogo">Historial de cambios</div>
-        <div className="cuerpo-dialogo">
+    <DialogoBase titulo="Historial de cambios" cerrar={() => tienda.setMostrarHistorial(false)} acciones={<>
+
+          <button disabled={!tienda.historial.deshacer.length} onClick={tienda.deshacer}>
+            Deshacer último
+          </button>
+          <button className="primario" onClick={() => tienda.setMostrarHistorial(false)}>
+            Cerrar
+          </button>
+
+    </>}>
+
           <p className="vacio" style={{ padding: 0, marginBottom: 10 }}>
             Cambios manuales y aceptados. El deshacer funciona sobre la pila actual; los cambios
             aceptados desde propuestas se aplican como una sola operación reversible.
@@ -23,16 +31,7 @@ export function DialogoHistorial(): JSX.Element {
               </span>
             </div>
           ))}
-        </div>
-        <div className="pie-dialogo">
-          <button disabled={!tienda.historial.deshacer.length} onClick={tienda.deshacer}>
-            Deshacer último
-          </button>
-          <button className="primario" onClick={() => tienda.setMostrarHistorial(false)}>
-            Cerrar
-          </button>
-        </div>
-      </div>
-    </div>
+
+    </DialogoBase>
   )
 }

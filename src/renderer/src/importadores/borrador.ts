@@ -142,10 +142,10 @@ export function borradorAProyecto(borrador: BorradorProyecto, nombreProyecto: st
       proyecto.revision.ambiguidades.push({
         id: nuevoId('amb'),
         tipo: 'semantica',
-        pregunta: `No se pudo ubicar la relaciÃ³n ${borradorRelacion.origenNombre} â€” ${borradorRelacion.destinoNombre} en el diseÃ±o. Â¿QuÃ© entidades intervienen?`,
+        pregunta: `No se pudo ubicar la relación ${borradorRelacion.origenNombre} — ${borradorRelacion.destinoNombre} en el diseño. ¿Qué entidades intervienen?`,
         destino: { tipo: 'relacion', id: null },
         acciones: [
-          { accion: 'excluir', etiqueta: 'Excluir del diseÃ±o' },
+          { accion: 'excluir', etiqueta: 'Excluir del diseño' },
           { accion: 'desconocida', etiqueta: 'Conservar como desconocida' }
         ],
         resolucion: null
@@ -184,7 +184,7 @@ export function borradorAProyecto(borrador: BorradorProyecto, nombreProyecto: st
       destino: { tipo: 'entidad', id: null },
       acciones: [
         { accion: 'desconocida', etiqueta: 'Conservar como desconocida' },
-        { accion: 'excluir', etiqueta: 'Excluir del diseÃ±o' }
+        { accion: 'excluir', etiqueta: 'Excluir del diseño' }
       ],
       resolucion: null
     })
@@ -198,7 +198,7 @@ export function borradorAProyecto(borrador: BorradorProyecto, nombreProyecto: st
       destino: { tipo: 'figura', id: null },
       acciones: [
         { accion: 'desconocida', etiqueta: 'Conservar como desconocida' },
-        { accion: 'excluir', etiqueta: 'Excluir del diseÃ±o' }
+        { accion: 'excluir', etiqueta: 'Excluir del diseño' }
       ],
       resolucion: null
     })
@@ -305,14 +305,14 @@ export function borradorIABorrador(
     const tipo =
       tipoTexto.includes('lect') ? 'lectura' : tipoTexto.includes('aus') ? 'ausencia' : 'semantica'
     return {
-      pregunta: textoDe(a.pregunta) || textoDe(a.texto) || textoDe(a.explicacion) || 'Elemento dudoso en la interpretaciÃ³n.',
+      pregunta: textoDe(a.pregunta) || textoDe(a.texto) || textoDe(a.explicacion) || 'Elemento dudoso en la interpretación.',
       tipo,
       afectaA: textoDe(a.afectaA) || textoDe(a.elemento) || null
     }
   })
 
   return {
-    resumen: textoDe(datos.resumen) || 'InterpretaciÃ³n del proveedor de IA.',
+    resumen: textoDe(datos.resumen) || 'Interpretación del proveedor de IA.',
     procedenciaArchivo: opciones.archivo,
     procedenciaImportador: opciones.importador,
     pagina: null,

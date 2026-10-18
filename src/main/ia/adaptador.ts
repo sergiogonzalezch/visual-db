@@ -99,3 +99,26 @@ export function extraerJson(texto: string): string | null {
   if (etiqueta) return etiqueta[1].trim()
   return null
 }
+
+export function normalizarRevision(texto: string): RespuestaRevisionIA {
+  const json = extraerJson(texto)
+  if (!json) throw new Error('La respuesta no contiene JSON de revisión.')
+  const datos = JSON.parse(json) as Partial<RespuestaRevisionIA>
+  return {
+    resumen: typeof datos.resumen === 'string' ? datos.resumen : '',
+    propuestas: Array.isArray(datos.propuestas) ? datos.propuestas : []
+  }
+}
+
+export function normalizarBorrador(texto: string): BorradorImportacionIA {
+  const json = extraerJson(texto)
+  if (!json) throw new Error('La respuesta no contiene JSON.')
+  const datos = JSON.parse(json) as Partial<BorradorImportacionIA>
+  return {
+    resumen: typeof datos.resumen === 'string' ? datos.resumen : '',
+    entidades: Array.isArray(datos.entidades) ? datos.entidades : [],
+    relaciones: Array.isArray(datos.relaciones) ? datos.relaciones : [],
+    reglas: Array.isArray(datos.reglas) ? datos.reglas : [],
+    ambiguedades: Array.isArray(datos.ambiguedades) ? datos.ambiguedades : []
+  }
+}

@@ -1,6 +1,3 @@
-import { app } from 'electron'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
-import { join } from 'path'
 import {
   BorradorImportacionIA,
   Configuracion,
@@ -14,60 +11,9 @@ import {
 import { AdaptadorProveedor } from './adaptador'
 import { adaptadorOllama } from './ollama'
 import { adaptadorOpenAI } from './openai'
-import { hayClaveApi, obtenerClaveApi, guardarClaveApi } from '../almacen-credenciales'
+import { obtenerClaveApi } from '../almacen-credenciales'
 
-const CONFIG_DEFECTO: Configuracion = {
-  soloLocal: true,
-  proveedor: {
-    proveedor: 'ollama',
-    endpoint: 'http://127.0.0.1:11434',
-    modelo: '',
-    claveApiEstablecida: false
-  },
-  limiteDiarioTokens: null,
-  ultimoProyecto: null
-}
-
-function rutaConfig(): string {
-  const dir = join(app.getPath('userData'), 'ajustes')
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-  return join(dir, 'configuracion.json')
-}
-
-export function cargarConfiguracion(): Configuracion {
-  try {
-    if (!existsSync(rutaConfig())) return structuredClone(CONFIG_DEFECTO)
-    const guardada = JSON.parse(readFileSync(rutaConfig(), 'utf-8')) as Partial<Configuracion>
-    return {
-      soloLocal: guardada.soloLocal ?? true,
-      proveedor: { ...CONFIG_DEFECTO.proveedor, ...guardada.proveedor },
-      limiteDiarioTokens: typeof guardada.limiteDiarioTokens === 'number' ? guardada.limiteDiarioTokens : null,
-      ultimoProyecto: guardada.ultimoProyecto ?? null
-    }
-  } catch {
-    return structuredClone(CONFIG_DEFECTO)
-  }
-}
-
-export function guardarConfiguracion(config: Configuracion, claveNueva: string | null): Configuracion {
-  const paraGuardar: Configuracion = {
-    soloLocal: config.soloLocal,
-    proveedor: {
-      proveedor: config.proveedor.proveedor,
-      endpoint: config.proveedor.endpoint,
-      modelo: config.proveedor.modelo,
-      claveApiEstablecida: false
-    },
-    limiteDiarioTokens: typeof config.limiteDiarioTokens === 'number' ? config.limiteDiarioTokens : null,
-    ultimoProyecto: config.ultimoProyecto ?? null
-  }
-  if (claveNueva !== null) {
-    guardarClaveApi(config.proveedor.proveedor, claveNueva)
-  }
-  paraGuardar.proveedor.claveApiEstablecida = hayClaveApi(config.proveedor.proveedor)
-  writeFileSync(rutaConfig(), JSON.stringify(paraGuardar, null, 2))
-  return paraGuardar
-}
+export { cargarConfiguracion, guardarConfiguracion } from './configuracion'
 
 function adaptadorDe(config: ConfigProveedor): AdaptadorProveedor {
   return config.proveedor === 'ollama' ? adaptadorOllama : adaptadorOpenAI
@@ -80,7 +26,9 @@ class ErrorProveedoria extends Error {
 }
 
 function exigirProveeduria(config: Configuracion): { adaptador: AdaptadorProveedor; clave: string | null } {
-  if (config.soloLocal) {
+  let local = false
+  try { local = config.proveedor.proveedor === 'ollama' && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(config.proveedor.endpoint).hostname) } catch { /* URL inválida */ }
+  if (config.soloLocal && !local) {
     throw new ErrorProveedoria(
       'La aplicación está en modo Solo local: se bloquean las conexiones remotas. Desactívalo en Modelo → Configuración para usar un proveedor.',
       'solo-local'
@@ -94,6 +42,15 @@ function exigirProveeduria(config: Configuracion): { adaptador: AdaptadorProveed
 }
 
 export async function probarConexion(config: Configuracion): Promise<ResultadoPruebaConexion> {
+  if (config.soloLocal) {
+    let local = false
+    try {
+      const url = new URL(config.proveedor.endpoint)
+      local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    } catch { /* La URL inválida se rechaza sin realizar conexiones. */ }
+    if (!local) return { ok: false, detalle: 'Solo local requiere una URL de tu equipo (localhost, 127.0.0.1 o ::1).', capacidades: null, modelos: [] }
+  }
+
   if (config.soloLocal && config.proveedor.proveedor !== 'ollama') {
     return {
       ok: false,
@@ -104,9 +61,9 @@ export async function probarConexion(config: Configuracion): Promise<ResultadoPr
     }
   }
   if (config.proveedor.proveedor === 'ollama') {
-    return adaptadorOllama.probarConexion(config.proveedor, null)
+    return adaptadorDe(config.proveedor).probarConexion({ ...config.proveedor, modelo: '' }, null)
   }
-  return adaptadorOpenAI.probarConexion(config.proveedor, obtenerClaveApi(config.proveedor.proveedor))
+  return adaptadorDe(config.proveedor).probarConexion({ ...config.proveedor, modelo: '' }, obtenerClaveApi(config.proveedor.proveedor))
 }
 
 const MAX_INTENTOS = 2

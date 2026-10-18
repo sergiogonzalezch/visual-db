@@ -1,3 +1,4 @@
+import { DialogoBase } from './DialogoBase'
 import { useTienda } from '../estado/tienda'
 
 export function DialogoImportacion(): JSX.Element {
@@ -6,10 +7,19 @@ export function DialogoImportacion(): JSX.Element {
   if (!borrador) return <></>
 
   return (
-    <div className="dialogo-fondo">
-      <div className="dialogo">
-        <div className="cabecera-dialogo">Confirmar interpretación importada</div>
-        <div className="cuerpo-dialogo">
+    <DialogoBase titulo="Confirmar interpretación importada" acciones={<>
+
+          <button onClick={tienda.descartarBorrador}>Descartar importación</button>
+          <button
+            className="primario"
+            onClick={tienda.confirmarBorrador}
+            title="Conserva la interpretación; las ambigüedades sin resolver quedan como desconocidas visibles"
+          >
+            Confirmar e incorporar al lienzo
+          </button>
+
+    </>}>
+
           <p style={{ marginBottom: 10 }}>{borrador.resumen}</p>
           <p style={{ color: 'var(--texto-suave)', fontSize: 12, marginBottom: 12 }}>
             Fuente: {borrador.procedenciaArchivo}
@@ -77,19 +87,8 @@ export function DialogoImportacion(): JSX.Element {
             <p className="vacio">Sin ambigüedades: la interpretación puede confirmarse directamente.</p>
           )}
           <ListaAmbiguedades />
-        </div>
-        <div className="pie-dialogo">
-          <button onClick={tienda.descartarBorrador}>Descartar importación</button>
-          <button
-            className="primario"
-            onClick={tienda.confirmarBorrador}
-            title="Conserva la interpretación; las ambigüedades sin resolver quedan como desconocidas visibles"
-          >
-            Confirmar e incorporar al lienzo
-          </button>
-        </div>
-      </div>
-    </div>
+
+    </DialogoBase>
   )
 }
 

@@ -1,3 +1,4 @@
+import { mensajeErrorVisible } from '../presentacion/errores'
 import { useEffect, useRef, useState } from 'react'
 import { useTienda } from '../estado/tienda'
 
@@ -11,14 +12,10 @@ export function PanelChat(): JSX.Element {
   }, [tienda.mensajesChat])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="chat-contenedor">
       <h2>Chat con el agente</h2>
-      <p className="explicacion" style={{ color: 'var(--texto-suave)', fontSize: 12, marginBottom: 8 }}>
-        El agente ve el modelo confirmado, tus reglas de negocio y la selección actual. Discutir nunca
-        equivale a aprobar; cualquier propuesta derivada requiere aprobación explícita.
-        {tienda.ajustes?.soloLocal && ' Modo Solo local activo: no hay conexión remota.'}
-      </p>
-      <div className="mensajes-chat">
+      <div className="contexto-chat"><span className="chip">{tienda.ajustes?.proveedor.modelo || 'Sin modelo seleccionado'}</span><p className="descripcion-panel">El asistente ve el diseño y la selección actual. Conversar no aplica cambios.</p></div>
+      <div className="mensajes-chat" role="log" aria-label="Conversación con el asistente">
         {tienda.mensajesChat.map((mensaje, i) => (
           <div key={i} className={`mensaje ${mensaje.rol}`}>
             {mensaje.contenido}
@@ -30,12 +27,12 @@ export function PanelChat(): JSX.Element {
           </div>
         ))}
         {tienda.estadoIA.error && (
-          <div className="mensaje sistema">Error: {tienda.estadoIA.error}</div>
+          <div className="mensaje sistema" role="alert">Error: {mensajeErrorVisible(tienda.estadoIA.error)}</div>
         )}
         <div ref={finRef} />
       </div>
       <div className="entrada-chat" style={{ marginTop: 'auto' }}>
-        <textarea
+        <textarea aria-label="Mensaje al asistente"
           value={texto}
           placeholder="Pregunta sobre el diseño o pide una propuesta…"
           onChange={(e) => setTexto(e.target.value)}
@@ -57,9 +54,10 @@ export function PanelChat(): JSX.Element {
             setTexto('')
           }}
         >
-          Enviar
+          {tienda.estadoIA.chateando ? 'Enviando…' : 'Enviar'}
         </button>
       </div>
+      <p className="pie-chat">Enter envía · Shift+Enter añade una línea</p>
     </div>
   )
 }

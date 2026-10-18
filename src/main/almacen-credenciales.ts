@@ -1,5 +1,5 @@
 import { safeStorage } from 'electron'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 
@@ -14,52 +14,34 @@ function rutaCredenciales(): string {
   return join(dir, 'proveedor.json')
 }
 
-export function guardarClaveApi(proveedor: string, clave: string | null): void {
+function leerMapa(): Record<string, string> {
   const ruta = rutaCredenciales()
-  if (!clave || clave === '') {
-    if (existsSync(ruta)) {
-      const previo = JSON.parse(readFileSync(ruta, 'utf-8')) as ArchivoCredenciales & { mapa: Record<string, string> }
-      if (previo.mapa) {
-        delete previo.mapa[proveedor]
-        writeFileSync(ruta, JSON.stringify(previo))
-      }
-    }
-    return
+  if (!existsSync(ruta)) return {}
+  const contenido = JSON.parse(readFileSync(ruta, 'utf-8')) as ArchivoCredenciales & { mapa?: Record<string, string> }
+  const datos = contenido.cifrado
+    ? safeStorage.decryptString(Buffer.from(contenido.datos, 'base64'))
+    : contenido.datos
+  return contenido.mapa ?? JSON.parse(datos) as Record<string, string>
+}
+
+export function guardarClaveApi(proveedor: string, clave: string | null): void {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('El almacén seguro del sistema no está disponible. No se guardó la clave.')
   }
-  let mapa: Record<string, string> = {}
-  if (existsSync(ruta)) {
-    try {
-      const previo = JSON.parse(readFileSync(ruta, 'utf-8')) as ArchivoCredenciales & { mapa?: Record<string, string> }
-      if (previo.cifrado && previo.mapa) mapa = previo.mapa
-      else if (!previo.cifrado && previo.datos) {
-        const viejo = JSON.parse(previo.datos) as Record<string, string>
-        mapa = { ...viejo }
-      }
-    } catch {
-      mapa = {}
-    }
-  }
-  mapa[proveedor] = clave
-  if (safeStorage.isEncryptionAvailable()) {
-    const cifrado = safeStorage.encryptString(JSON.stringify(mapa)).toString('base64')
-    writeFileSync(ruta, JSON.stringify({ cifrado: true, datos: cifrado }))
-  } else {
-    writeFileSync(ruta, JSON.stringify({ cifrado: false, datos: JSON.stringify(mapa) }))
-  }
+  const mapa = leerMapa()
+  if (clave) mapa[proveedor] = clave
+  else delete mapa[proveedor]
+  const datos = safeStorage.encryptString(JSON.stringify(mapa)).toString('base64')
+  const ruta = rutaCredenciales()
+  writeFileSync(`${ruta}.tmp`, JSON.stringify({ cifrado: true, datos }), { mode: 0o600 })
+  renameSync(`${ruta}.tmp`, ruta)
 }
 
 export function obtenerClaveApi(proveedor: string): string | null {
   const ruta = rutaCredenciales()
   if (!existsSync(ruta)) return null
   try {
-    const contenido = JSON.parse(readFileSync(ruta, 'utf-8')) as ArchivoCredenciales & { mapa?: Record<string, string> }
-    let mapa: Record<string, string>
-    if (contenido.cifrado) {
-      mapa = JSON.parse(safeStorage.decryptString(Buffer.from(contenido.datos, 'base64'))) as Record<string, string>
-    } else {
-      mapa = (contenido.mapa ?? JSON.parse(contenido.datos)) as Record<string, string>
-    }
-    return mapa[proveedor] ?? null
+    return leerMapa()[proveedor] ?? null
   } catch {
     return null
   }

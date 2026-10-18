@@ -97,9 +97,10 @@ export function PanelConsumo(): JSX.Element {
       )}
 
       <div className="campo">
-        <label>Límite diario de tokens (opcional; vacío = sin límite)</label>
+        <label htmlFor="limite-tokens">Límite diario de tokens (opcional)</label>
         <div className="fila">
           <input
+            id="limite-tokens"
             type="number"
             min={0}
             value={limiteTexto}
@@ -160,7 +161,7 @@ export function PanelConsumo(): JSX.Element {
         >
           Actualizar
         </button>
-        <button
+        <details className="gestion-registro"><summary>Gestionar registro local</summary><button
           className="peligro auto"
           onClick={() => {
             if (window.confirm('¿Borrar el historial de consumo de tokens registrado?')) {
@@ -169,7 +170,7 @@ export function PanelConsumo(): JSX.Element {
           }}
         >
           Limpiar historial
-        </button>
+        </button></details>
       </div>
     </div>
   )

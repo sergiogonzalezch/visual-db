@@ -10,8 +10,18 @@ import type {
   SolicitudChat,
   SolicitudRevision
 } from '../shared/ai'
+import type { ConfigProveedor, ConexionProveedor, ProveedorTipo } from '../shared/ai'
 
 const api = {
+  onProveedores: (callback: () => void): (() => void) => {
+    ipcRenderer.on('proveedores:actualizados', callback)
+    return () => ipcRenderer.removeListener('proveedores:actualizados', callback)
+  },
+  estadosProveedores: (): Promise<Partial<Record<ProveedorTipo, ConexionProveedor>>> => ipcRenderer.invoke('proveedores:estados'),
+  conectarProveedor: (perfil: ConfigProveedor, clave: string | null): Promise<ConexionProveedor> => ipcRenderer.invoke('proveedores:conectar', perfil, clave),
+  seleccionarModelo: (tipo: ProveedorTipo, modelo: string): Promise<Configuracion> => ipcRenderer.invoke('proveedores:modelo', tipo, modelo),
+  borrarCredencial: (tipo: ProveedorTipo): Promise<Configuracion> => ipcRenderer.invoke('proveedores:borrar-clave', tipo),
+  revelarCredencial: (tipo: ProveedorTipo): Promise<string | null> => ipcRenderer.invoke('proveedores:revelar-clave', tipo),
   guardarProyecto: (ruta: string, archivo: unknown): Promise<string> =>
     ipcRenderer.invoke('proyecto:guardar', ruta, archivo),
   abrirProyectoDialogo: (): Promise<{ ruta: string; archivo: unknown } | null> =>

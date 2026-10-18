@@ -15,6 +15,7 @@ export interface ProveedorRemoto {
   jsonEstructurado: boolean
   clavePlaceholder: string
   nota: string | null
+  rutaValidacionClave?: string
 }
 
 export const PROVEEDORES_REMOTOS: ProveedorRemoto[] = [
@@ -56,6 +57,7 @@ export const PROVEEDORES_REMOTOS: ProveedorRemoto[] = [
   },
   {
     tipo: 'openrouter',
+    rutaValidacionClave: '/key',
     etiqueta: 'OpenRouter (agregador)',
     endpoint: 'https://openrouter.ai/api/v1',
     modelo: 'openai/gpt-4o-mini',
@@ -90,10 +92,27 @@ export interface ConfigProveedor {
 }
 
 export interface Configuracion {
+  proveedores?: Partial<Record<ProveedorTipo, ConfigProveedor>>
   soloLocal: boolean
   proveedor: ConfigProveedor
   limiteDiarioTokens: number | null
   ultimoProyecto: { ruta: string | null; id: string } | null
+}
+
+export type EstadoConexion = 'sin-configurar' | 'desconectado' | 'conectando' | 'conectado' | 'error'
+export interface ConexionProveedor {
+  estado: EstadoConexion
+  detalle: string
+  modelos: string[]
+}
+
+export function perfilProveedor(config: Configuracion, tipo: ProveedorTipo): ConfigProveedor {
+  return config.proveedores?.[tipo] ?? (config.proveedor.proveedor === tipo ? config.proveedor : {
+    proveedor: tipo,
+    endpoint: tipo === 'ollama' ? 'http://127.0.0.1:11434' : proveedorRemoto(tipo)?.endpoint ?? '',
+    modelo: '',
+    claveApiEstablecida: false
+  })
 }
 
 export type OperacionConsumo = 'revision' | 'chat' | 'imagen' | 'texto'

@@ -1,3 +1,4 @@
+import { solicitar } from './http'
 import {
   BorradorImportacionIA,
   CapacidadesProveedor,
@@ -8,7 +9,8 @@ import {
   ResultadoPruebaConexion,
   SolicitudChat,
   SolicitudRevision,
-  soportaJsonEstructurado
+  soportaJsonEstructurado,
+  proveedorRemoto
 } from '@shared/ai'
 import {
   AdaptadorProveedor,
@@ -17,7 +19,8 @@ import {
   SISTEMA_REVISION,
   aMensajesProveedor,
   capacidadesPorDefecto,
-  extraerJson
+  normalizarRevision,
+  normalizarBorrador
 } from './adaptador'
 import { estimarTokens, registrarConsumo } from './consumo'
 
@@ -25,6 +28,10 @@ function urlBase(config: ConfigProveedor): string {
   let base = config.endpoint.replace(/\/+$/, '')
   if (!/\/(v\d+[a-z]*|openai)$/i.test(base)) base = `${base}/v1`
   return base
+}
+
+function modeloProveedor(config: ConfigProveedor, modelo: string): string {
+  return config.proveedor === 'gemini' ? modelo.replace(/^models\//, '') : modelo
 }
 
 function cabeceras(claveApi: string | null): Record<string, string> {
@@ -40,7 +47,7 @@ async function chatCompletions(
   opciones: { json: boolean; signal: AbortSignal; operacion: OperacionConsumo }
 ): Promise<string> {
   const cuerpo: Record<string, unknown> = {
-    model: config.modelo,
+    model: modeloProveedor(config, config.modelo),
     messages: mensajes,
     stream: false,
     temperature: 0.2
@@ -48,16 +55,12 @@ async function chatCompletions(
   if (opciones.json && soportaJsonEstructurado(config.proveedor)) {
     cuerpo.response_format = { type: 'json_object' }
   }
-  const respuesta = await fetch(`${urlBase(config)}/chat/completions`, {
+  const respuesta = await solicitar(`${urlBase(config)}/chat/completions`, {
     method: 'POST',
     headers: cabeceras(claveApi),
     body: JSON.stringify(cuerpo),
     signal: opciones.signal
   })
-  if (!respuesta.ok) {
-    const texto = await respuesta.text().catch(() => '')
-    throw new Error(`El proveedor respondió ${respuesta.status}: ${texto.slice(0, 200)}`)
-  }
   const datos = (await respuesta.json()) as {
     choices?: { message?: { content?: string | null } }[]
     usage?: { prompt_tokens?: number; completion_tokens?: number }
@@ -86,124 +89,39 @@ async function chatCompletions(
   return contenido
 }
 
-function normalizarRevision(texto: string): RespuestaRevisionIA {
-  const json = extraerJson(texto)
-  if (!json) throw new Error('La respuesta no contiene JSON de revisión.')
-  const datos = JSON.parse(json) as Partial<RespuestaRevisionIA>
-  return {
-    resumen: typeof datos.resumen === 'string' ? datos.resumen : '',
-    propuestas: Array.isArray(datos.propuestas) ? datos.propuestas : []
-  }
-}
-
-function normalizarBorrador(texto: string): BorradorImportacionIA {
-  const json = extraerJson(texto)
-  if (!json) throw new Error('La respuesta no contiene JSON.')
-  const datos = JSON.parse(json) as Partial<BorradorImportacionIA>
-  return {
-    resumen: typeof datos.resumen === 'string' ? datos.resumen : '',
-    entidades: Array.isArray(datos.entidades) ? datos.entidades : [],
-    relaciones: Array.isArray(datos.relaciones) ? datos.relaciones : [],
-    reglas: Array.isArray(datos.reglas) ? datos.reglas : [],
-    ambiguedades: Array.isArray(datos.ambiguedades) ? datos.ambiguedades : []
-  }
-}
-
-async function probarConChat(
-  config: ConfigProveedor,
-  claveApi: string | null
-): Promise<ResultadoPruebaConexion> {
-  try {
-    const control = AbortSignal.timeout(10000)
-    const respuesta = await fetch(`${urlBase(config)}/chat/completions`, {
-      method: 'POST',
-      headers: cabeceras(claveApi),
-      body: JSON.stringify({
-        model: config.modelo,
-        messages: [{ role: 'user', content: 'Responde solo con la palabra ok' }],
-        max_tokens: 5,
-        stream: false
-      }),
-      signal: control
-    })
-    if (respuesta.status === 401 || respuesta.status === 403) {
-      return {
-        ok: false,
-        detalle: 'Autenticación rechazada. Revisa la clave de API.',
-        capacidades: null,
-        modelos: []
-      }
-    }
-    if (!respuesta.ok) {
-      const cuerpo = await respuesta.text().catch(() => '')
-      return {
-        ok: false,
-        detalle: `El proveedor respondió ${respuesta.status}: ${cuerpo.slice(0, 300) || '(sin cuerpo)'}`,
-        capacidades: null,
-        modelos: []
-      }
-    }
-    return {
-      ok: true,
-      detalle: `Conectado vía chat. El proveedor no expone la lista de modelos, así que la disponibilidad de «${config.modelo}» no pudo verificarse automáticamente.`,
-      capacidades: capacidadesPorDefecto({ estructurado: true, vision: 'no-verificable' }),
-      modelos: []
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      detalle: `No se pudo contactar con el proveedor en ${config.endpoint}: ${(error as Error).message}`,
-      capacidades: null,
-      modelos: []
-    }
-  }
-}
-
 export const adaptadorOpenAI: AdaptadorProveedor = {
   nombre: 'openai',
 
   async probarConexion(config, claveApi): Promise<ResultadoPruebaConexion> {
     try {
+      if (config.proveedor !== 'personalizado' && !claveApi) throw new Error('Ingresa una clave API para conectar este proveedor.')
       const control = AbortSignal.timeout(8000)
-      const respuesta = await fetch(`${urlBase(config)}/models`, {
-        headers: cabeceras(claveApi),
+      const rutaValidacion = proveedorRemoto(config.proveedor)?.rutaValidacionClave
+      if (rutaValidacion) {
+        const validacion = await solicitar(`${urlBase(config)}${rutaValidacion}`, { headers: cabeceras(claveApi), signal: control })
+        await validacion.body?.cancel()
+      }
+      const respuesta = await solicitar(`${urlBase(config)}/models`, {
+        headers: config.proveedor === 'anthropic'
+          ? { 'x-api-key': claveApi ?? '', 'anthropic-version': '2023-06-01' }
+          : cabeceras(claveApi),
         signal: control
       })
-      if (respuesta.status === 401 || respuesta.status === 403) {
-        return {
-          ok: false,
-          detalle: 'Autenticación rechazada. Revisa la clave de API.',
-          capacidades: null,
-          modelos: []
-        }
-      }
-      if (respuesta.status === 404) {
-        return probarConChat(config, claveApi)
-      }
-      if (!respuesta.ok) {
-        const cuerpo = await respuesta.text().catch(() => '')
-        return {
-          ok: false,
-          detalle: `El proveedor respondió ${respuesta.status}: ${cuerpo.slice(0, 300) || '(sin cuerpo)'}`,
-          capacidades: null,
-          modelos: []
-        }
-      }
       const datos = (await respuesta.json()) as { data?: { id: string }[] }
-      const modelos = (datos.data ?? []).map((m) => m.id)
-      const coincide = !config.modelo || modelos.includes(config.modelo)
+      const modelos = (datos.data ?? []).map((m) => modeloProveedor(config, m.id))
+      const coincide = !config.modelo || modelos.includes(modeloProveedor(config, config.modelo))
       return {
         ok: coincide,
         detalle: coincide
           ? `Conectado. El modelo «${config.modelo}» está disponible. La capacidad de visión no es verificable automáticamente.`
           : `Conectado, pero el modelo «${config.modelo}» no figura en la lista del proveedor.`,
         capacidades: capacidadesPorDefecto({ estructurado: true, vision: 'no-verificable' }),
-        modelos: modelos.slice(0, 100)
+        modelos: [...new Set(modelos)].sort()
       }
     } catch (error) {
       return {
         ok: false,
-        detalle: `No se pudo contactar con el proveedor en ${config.endpoint}: ${(error as Error).message}`,
+        detalle: `No se pudo contactar con el proveedor : ${(error as Error).message}`,
         capacidades: null,
         modelos: []
       }

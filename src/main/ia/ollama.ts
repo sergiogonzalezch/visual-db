@@ -1,3 +1,4 @@
+import { solicitar } from './http'
 import {
   BorradorImportacionIA,
   CapacidadesProveedor,
@@ -14,7 +15,8 @@ import {
   SISTEMA_REVISION,
   aMensajesProveedor,
   capacidadesPorDefecto,
-  extraerJson
+  extraerJson,
+  normalizarRevision
 } from './adaptador'
 import { estimarTokens, registrarConsumo } from './consumo'
 
@@ -40,16 +42,12 @@ async function chatOllama(
     stream: false
   }
   if (opciones.formatoJson) cuerpo.format = 'json'
-  const respuesta = await fetch(`${urlBase(config)}/api/chat`, {
+  const respuesta = await solicitar(`${urlBase(config)}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(cuerpo),
     signal: opciones.signal
   })
-  if (!respuesta.ok) {
-    const texto = await respuesta.text().catch(() => '')
-    throw new Error(`Ollama respondió ${respuesta.status}: ${texto.slice(0, 200)}`)
-  }
   const datos = (await respuesta.json()) as {
     message?: { content?: string }
     prompt_eval_count?: number
@@ -78,26 +76,13 @@ async function chatOllama(
   return contenido
 }
 
-function normalizarRevision(texto: string): RespuestaRevisionIA {
-  const json = extraerJson(texto)
-  if (!json) throw new Error('La respuesta no contiene JSON de revisión.')
-  const datos = JSON.parse(json) as Partial<RespuestaRevisionIA>
-  return {
-    resumen: typeof datos.resumen === 'string' ? datos.resumen : '',
-    propuestas: Array.isArray(datos.propuestas) ? datos.propuestas : []
-  }
-}
-
 export const adaptadorOllama: AdaptadorProveedor = {
   nombre: 'ollama',
 
   async probarConexion(config, _claveApi): Promise<ResultadoPruebaConexion> {
     try {
       const control = AbortSignal.timeout(8000)
-      const respuesta = await fetch(`${urlBase(config)}/api/tags`, { signal: control })
-      if (!respuesta.ok) {
-        return { ok: false, detalle: `El servidor respondió ${respuesta.status}.`, capacidades: null, modelos: [] }
-      }
+      const respuesta = await solicitar(`${urlBase(config)}/api/tags`, { signal: control })
       const datos = (await respuesta.json()) as { models?: { name: string }[] }
       const modelos = (datos.models ?? []).map((m) => m.name)
       const coincide = !config.modelo || modelos.some((m) => m === config.modelo || m.startsWith(`${config.modelo}:`))
@@ -122,7 +107,7 @@ export const adaptadorOllama: AdaptadorProveedor = {
     } catch (error) {
       return {
         ok: false,
-        detalle: `No se pudo contactar con Ollama en ${config.endpoint}: ${(error as Error).message}`,
+        detalle: `No se pudo contactar con Ollama : ${(error as Error).message}`,
         capacidades: null,
         modelos: []
       }

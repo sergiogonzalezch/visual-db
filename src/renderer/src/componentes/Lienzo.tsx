@@ -300,7 +300,7 @@ export function Lienzo(): JSX.Element {
       data-zoom={zoom}
     >
       <g transform={`translate(${paneo.x},${paneo.y}) scale(${zoom})`}>
-        {disenoVisible.relaciones.map((relacion: any) => {
+        {disenoVisible.relaciones.map((relacion) => {
           const centroOrigen = centroDe(relacion.inicio.entidadId)
           const centroDestino = centroDe(relacion.fin.entidadId)
           const origenEntidad =
@@ -310,8 +310,8 @@ export function Lienzo(): JSX.Element {
             hallarEntidad(disenoVisible, relacion.fin.entidadId) ??
             hallarEntidad(tienda.proyecto.diseno, relacion.fin.entidadId)
           if (!origenEntidad || !destinoEntidad) return null
-          const origen = interseccionBorde(origenEntidad, centroDestino)
-          const destino = interseccionBorde(destinoEntidad, centroOrigen)
+          const origen = interseccionBorde({ ...origenEntidad, ...posicionDe(origenEntidad) }, centroDestino)
+          const destino = interseccionBorde({ ...destinoEntidad, ...posicionDe(destinoEntidad) }, centroOrigen)
           const seleccionada = tienda.seleccion?.tipo === 'relacion' && tienda.seleccion.id === relacion.id
           const etiquetaInicio = etiquetaCardinalidad(
             relacion.inicio.cardinalidad.minimo,
@@ -353,7 +353,7 @@ export function Lienzo(): JSX.Element {
           )
         })}
 
-        {entidades.map((entidad: any) => {
+        {entidades.map((entidad) => {
           const posicion = posicionDe(entidad)
           const ancho = anchoEntidad(entidad)
           const alto = altoEntidad(entidad)
@@ -376,8 +376,8 @@ export function Lienzo(): JSX.Element {
               <text className="nombre" x={10} y={18}>
                 {eliminada ? `✕ ${entidad.nombre}` : entidad.nombre}
               </text>
-              {entidad.atributos.map((atributo: any, indice: number) => {
-                const clave = entidad.claves.find((c: any) => c.atributoIds.includes(atributo.id))
+              {entidad.atributos.map((atributo, indice) => {
+                const clave = entidad.claves.find((c) => c.atributoIds.includes(atributo.id))
                 const etiqueta =
                   clave?.tipo === 'primaria' ? 'PK' : clave?.tipo === 'candidata' ? 'UK' : clave?.tipo === 'foranea' ? 'FK' : ''
                 return (
@@ -413,7 +413,7 @@ export function Lienzo(): JSX.Element {
           )
         })}
 
-        {disenoVisible.notas.map((nota: any) => (
+        {disenoVisible.notas.map((nota) => (
           <g
             key={nota.id}
             className="nota-carta"

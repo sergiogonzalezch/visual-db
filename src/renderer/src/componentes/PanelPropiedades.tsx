@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import {
   DESCONOCIDO,
   Desconocible,
@@ -20,10 +20,11 @@ function Campo({
   onChange: (valor: string) => void
   tipo?: string
 }): JSX.Element {
+  const id = useId()
   return (
     <div className="campo">
-      <label>{etiqueta}</label>
-      <input type={tipo} value={valor} onChange={(e) => onChange(e.target.value)} />
+      <label htmlFor={id}>{etiqueta}</label>
+      <input id={id} type={tipo} value={valor} onChange={(e) => onChange(e.target.value)} />
     </div>
   )
 }
@@ -39,10 +40,11 @@ function SelectorDesconocible({
   opciones: { valor: string; etiqueta: string }[]
   onChange: (valor: Desconocible<string>) => void
 }): JSX.Element {
+  const id = useId()
   return (
     <div className="campo">
-      <label>{etiqueta}</label>
-      <select value={String(valor)} onChange={(e) => onChange(e.target.value as Desconocible<string>)}>
+      <label htmlFor={id}>{etiqueta}</label>
+      <select id={id} value={String(valor)} onChange={(e) => onChange(e.target.value as Desconocible<string>)}>
         <option value={DESCONOCIDO}>Desconocido</option>
         {opciones.map((opcion) => (
           <option key={opcion.valor} value={opcion.valor}>
@@ -68,16 +70,15 @@ export function PanelPropiedades(): JSX.Element {
       <div>
         <h2>Propiedades</h2>
         <p className="vacio">
-          Selecciona una entidad, relación o nota en el lienzo para editarla. Usa las herramientas de la
-          izquierda para crear elementos.
+          Selecciona una entidad, relación o nota en el lienzo para editarla. Usa las herramientas sobre el lienzo para crear elementos.
         </p>
         <h3>Reglas de negocio</h3>
         <ListaReglas />
         <div className="campo">
-          <label>Nueva regla de negocio</label>
+          <label htmlFor="regla-negocio">Nueva regla de negocio</label>
           <input
             value={textoRegla}
-            placeholder="Ej: Cada cliente puede tener muchos pedidos"
+            id="regla-negocio" placeholder="Ej: Cada cliente puede tener muchos pedidos"
             onChange={(e) => setTextoRegla(e.target.value)}
           />
         </div>
@@ -329,8 +330,9 @@ export function PanelPropiedades(): JSX.Element {
       <h2>Entidad</h2>
       <Campo etiqueta="Nombre" valor={entidad.nombre} onChange={(nombre) => editarEntidad({ nombre })} />
       <div className="campo">
-        <label>Descripción</label>
+        <label htmlFor="descripcion-entidad">Descripción</label>
         <textarea
+          id="descripcion-entidad"
           value={entidad.descripcion ?? ''}
           onChange={(e) => editarEntidad({ descripcion: e.target.value || null })}
         />
@@ -344,7 +346,7 @@ export function PanelPropiedades(): JSX.Element {
           return (
             <div key={atributo.id} className="elemento" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
               <div className="fila">
-                <input
+                <input aria-label="Nombre del atributo"
                   value={atributo.nombre}
                   onChange={(e) => editarAtributo(atributo, { nombre: e.target.value })}
                 />
@@ -435,7 +437,7 @@ export function PanelPropiedades(): JSX.Element {
         + Añadir atributo
       </button>
 
-      <h3>Claves candidatas</h3>
+      <details className="seccion-plegable"><summary>Claves candidatas</summary>
       {entidad.claves.filter((c) => c.tipo === 'candidata').length === 0 && (
         <p className="vacio">Sin claves candidatas declaradas.</p>
       )}
@@ -507,7 +509,7 @@ export function PanelPropiedades(): JSX.Element {
         </button>
       </div>
 
-      <h3>Claves foráneas</h3>
+      </details><details className="seccion-plegable"><summary>Claves foráneas</summary>
       {entidad.claves.filter((c) => c.tipo === 'foranea').length === 0 && (
         <p className="vacio">Sin claves foráneas. Crea una desde la relación correspondiente o aquí.</p>
       )}
@@ -599,7 +601,7 @@ export function PanelPropiedades(): JSX.Element {
         </div>
       </div>
 
-      <div style={{ marginTop: 14 }}>
+      </details><div style={{ marginTop: 14 }}>
         <button className="peligro" onClick={tienda.eliminarSeleccion}>
           Eliminar entidad
         </button>

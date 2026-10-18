@@ -16,10 +16,21 @@ export function App(): JSX.Element {
     <div className="aplicacion">
       <Cabecera />
       <div className="cuerpo">
-        <Herramientas />
-        <div className="zona-lienzo">
-          <Lienzo />
-        </div>
+        <main className="zona-trabajo" aria-label="Editor del modelo">
+          <Herramientas />
+          <div className="zona-lienzo">
+            <Lienzo />
+            {tienda.proyecto.diseno.entidades.length === 0 && tienda.proyecto.diseno.notas.length === 0 && tienda.herramienta === 'seleccion' && (
+              <div className="bienvenida-lienzo"><section>
+                <span className="sobre-titulo">TU ESPACIO DE DISEÑO</span>
+                <h1>Tu modelo empieza aquí</h1>
+                <p>Crea tu primera entidad o importa un diseño existente. Puedes configurar la IA cuando la necesites.</p>
+                <div className="acciones-bienvenida"><button className="primario" onClick={() => tienda.setHerramienta('entidad')}>Crear entidad</button><button onClick={tienda.importarDrawio}>Importar draw.io</button></div>
+                <small>Imagen y Markdown disponibles en Importar</small>
+              </section></div>
+            )}
+          </div>
+        </main>
         <PanelDerecho />
       </div>
       <BarraEstado />
@@ -29,21 +40,7 @@ export function App(): JSX.Element {
       {tienda.recuperacionPendiente && <DialogoRecuperacion />}
       {tienda.aviso && (
         <div
-          style={{
-            position: 'fixed',
-            bottom: 40,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#232b3a',
-            border: '1px solid #3a465c',
-            borderRadius: 8,
-            padding: '10px 14px',
-            zIndex: 60,
-            maxWidth: 640,
-            display: 'flex',
-            gap: 10,
-            alignItems: 'center'
-          }}
+          className="aviso-flotante"
           role="status"
         >
           <span>{tienda.aviso}</span>

@@ -1,0 +1,56 @@
+:root {
+  --fondo: #11151c;
+  --panel: #191f29;
+  --panel-elevado: #202836;
+  --entrada: #111720;
+  --panel-borde: #323d4e;
+  --texto: #e6edf7;
+  --texto-suave: #a5b3c7;
+  --acento: #8aafff;
+  --accion: #3868db;
+  --sobre-accion: #fff;
+  --acento-suave: #263755;
+  --error: #ffa0aa;
+  --aviso: #f4c16a;
+  --ok: #7bddb4;
+  --nota: #f5d76e;
+  --nota-fondo: #3c3520;
+  --nota-texto: #f7efc8;
+  --grilla: #ffffff0a;
+  --radio: 10px;
+  --sombra: 0 16px 48px #0003;
+  --espacio-1: 4px;
+  --espacio-2: 8px;
+  --espacio-3: 12px;
+  --espacio-4: 16px;
+  --espacio-6: 24px;
+  --espacio-8: 32px;
+  --fuente-cuerpo: 14px;
+  --fuente-secundaria: 12px;
+  --altura-control: 36px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --fondo: #f4f6fa;
+    --panel: #fff;
+    --panel-elevado: #f9fafc;
+    --entrada: #fff;
+    --panel-borde: #d9e1ec;
+    --texto: #17243a;
+    --texto-suave: #52627b;
+    --acento: #285bd4;
+    --accion: #285bd4;
+    --acento-suave: #e9efff;
+    --error: #ac3446;
+    --aviso: #855107;
+    --ok: #147452;
+    --nota: #795b0c;
+    --nota-fondo: #fff5cf;
+    --nota-texto: #4c3a12;
+    --grilla: #17243a0c;
+    color-scheme: light;
+  }
+}
