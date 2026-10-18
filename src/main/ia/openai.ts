@@ -109,6 +109,56 @@ function normalizarBorrador(texto: string): BorradorImportacionIA {
   }
 }
 
+async function probarConChat(
+  config: ConfigProveedor,
+  claveApi: string | null
+): Promise<ResultadoPruebaConexion> {
+  try {
+    const control = AbortSignal.timeout(10000)
+    const respuesta = await fetch(`${urlBase(config)}/chat/completions`, {
+      method: 'POST',
+      headers: cabeceras(claveApi),
+      body: JSON.stringify({
+        model: config.modelo,
+        messages: [{ role: 'user', content: 'Responde solo con la palabra ok' }],
+        max_tokens: 5,
+        stream: false
+      }),
+      signal: control
+    })
+    if (respuesta.status === 401 || respuesta.status === 403) {
+      return {
+        ok: false,
+        detalle: 'Autenticación rechazada. Revisa la clave de API.',
+        capacidades: null,
+        modelos: []
+      }
+    }
+    if (!respuesta.ok) {
+      const cuerpo = await respuesta.text().catch(() => '')
+      return {
+        ok: false,
+        detalle: `El proveedor respondió ${respuesta.status}: ${cuerpo.slice(0, 300) || '(sin cuerpo)'}`,
+        capacidades: null,
+        modelos: []
+      }
+    }
+    return {
+      ok: true,
+      detalle: `Conectado vía chat. El proveedor no expone la lista de modelos, así que la disponibilidad de «${config.modelo}» no pudo verificarse automáticamente.`,
+      capacidades: capacidadesPorDefecto({ estructurado: true, vision: 'no-verificable' }),
+      modelos: []
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      detalle: `No se pudo contactar con el proveedor en ${config.endpoint}: ${(error as Error).message}`,
+      capacidades: null,
+      modelos: []
+    }
+  }
+}
+
 export const adaptadorOpenAI: AdaptadorProveedor = {
   nombre: 'openai',
 
@@ -127,10 +177,14 @@ export const adaptadorOpenAI: AdaptadorProveedor = {
           modelos: []
         }
       }
+      if (respuesta.status === 404) {
+        return probarConChat(config, claveApi)
+      }
       if (!respuesta.ok) {
+        const cuerpo = await respuesta.text().catch(() => '')
         return {
           ok: false,
-          detalle: `El proveedor respondió ${respuesta.status}.`,
+          detalle: `El proveedor respondió ${respuesta.status}: ${cuerpo.slice(0, 300) || '(sin cuerpo)'}`,
           capacidades: null,
           modelos: []
         }

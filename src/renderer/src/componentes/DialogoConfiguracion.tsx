@@ -127,6 +127,10 @@ export function DialogoConfiguracion(): JSX.Element {
               onClick={async () => {
                 setProbando(true)
                 setResultadoPrueba(null)
+                if (claveNueva !== '') {
+                  await tienda.guardarAjustes(actualizado({}), claveNueva)
+                  setClaveNueva('')
+                }
                 const resultado = await tienda.probarConexion()
                 setResultadoPrueba(
                   resultado
