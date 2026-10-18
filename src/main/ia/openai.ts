@@ -2,11 +2,13 @@ import {
   BorradorImportacionIA,
   CapacidadesProveedor,
   ConfigProveedor,
+  OperacionConsumo,
   RespuestaChatIA,
   RespuestaRevisionIA,
   ResultadoPruebaConexion,
   SolicitudChat,
-  SolicitudRevision
+  SolicitudRevision,
+  soportaJsonEstructurado
 } from '@shared/ai'
 import {
   AdaptadorProveedor,
@@ -17,10 +19,11 @@ import {
   capacidadesPorDefecto,
   extraerJson
 } from './adaptador'
+import { estimarTokens, registrarConsumo } from './consumo'
 
 function urlBase(config: ConfigProveedor): string {
   let base = config.endpoint.replace(/\/+$/, '')
-  if (!base.endsWith('/v1')) base = `${base}/v1`
+  if (!/\/(v\d+[a-z]*|openai)$/i.test(base)) base = `${base}/v1`
   return base
 }
 
@@ -34,7 +37,7 @@ async function chatCompletions(
   config: ConfigProveedor,
   claveApi: string | null,
   mensajes: MensajeProveedor[],
-  opciones: { json: boolean; signal: AbortSignal }
+  opciones: { json: boolean; signal: AbortSignal; operacion: OperacionConsumo }
 ): Promise<string> {
   const cuerpo: Record<string, unknown> = {
     model: config.modelo,
@@ -42,7 +45,9 @@ async function chatCompletions(
     stream: false,
     temperature: 0.2
   }
-  if (opciones.json) cuerpo.response_format = { type: 'json_object' }
+  if (opciones.json && soportaJsonEstructurado(config.proveedor)) {
+    cuerpo.response_format = { type: 'json_object' }
+  }
   const respuesta = await fetch(`${urlBase(config)}/chat/completions`, {
     method: 'POST',
     headers: cabeceras(claveApi),
@@ -55,8 +60,30 @@ async function chatCompletions(
   }
   const datos = (await respuesta.json()) as {
     choices?: { message?: { content?: string | null } }[]
+    usage?: { prompt_tokens?: number; completion_tokens?: number }
   }
-  return datos.choices?.[0]?.message?.content ?? ''
+  const contenido = datos.choices?.[0]?.message?.content ?? ''
+  const uso = datos.usage
+  if (uso && typeof uso.prompt_tokens === 'number') {
+    registrarConsumo({
+      proveedor: config.proveedor,
+      modelo: config.modelo,
+      operacion: opciones.operacion,
+      entrada: uso.prompt_tokens ?? 0,
+      salida: uso.completion_tokens ?? 0,
+      estimado: false
+    })
+  } else {
+    registrarConsumo({
+      proveedor: config.proveedor,
+      modelo: config.modelo,
+      operacion: opciones.operacion,
+      entrada: estimarTokens(JSON.stringify(mensajes)),
+      salida: estimarTokens(contenido),
+      estimado: true
+    })
+  }
+  return contenido
 }
 
 function normalizarRevision(texto: string): RespuestaRevisionIA {
@@ -140,7 +167,7 @@ export const adaptadorOpenAI: AdaptadorProveedor = {
           content: `Modelo y contexto:\n${JSON.stringify(solicitud, null, 1)}\n\nDevuelve el JSON de la revisión.`
         }
       ],
-      { json: true, signal }
+      { json: true, signal, operacion: 'revision' }
     )
     return normalizarRevision(texto)
   },
@@ -161,7 +188,7 @@ export const adaptadorOpenAI: AdaptadorProveedor = {
           }`
         }
       ],
-      { json: false, signal }
+      { json: false, signal, operacion: 'chat' }
     )
     return { contenido: texto, propuestas: [] }
   },
@@ -186,7 +213,7 @@ export const adaptadorOpenAI: AdaptadorProveedor = {
           ]
         }
       ],
-      { json: true, signal }
+      { json: true, signal, operacion: 'imagen' }
     )
     return normalizarBorrador(texto)
   },
@@ -206,7 +233,7 @@ export const adaptadorOpenAI: AdaptadorProveedor = {
             texto.slice(0, 12000)
         }
       ],
-      { json: true, signal }
+      { json: true, signal, operacion: 'texto' }
     )
     return normalizarBorrador(respuesta)
   },

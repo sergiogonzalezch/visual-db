@@ -10,7 +10,8 @@ No genera SQL ni DDL: trabaja sobre el modelo (entidades, atributos, claves, rel
 - **Revisión asistida por IA**: propuestas estructuradas con explicación, supuestos y resultado; se aplican de forma atómica solo tras tu aprobación. Comparación antes/después en el lienzo, rechazo y discusión por chat.
 - **Validación local determinista**: hallazgos de integridad y análisis de normalización 1FN–BCNF con preguntas explícitas cuando falta información.
 - **Importación**: draw.io (comprimido y plano), imágenes de diagramas (mediante proveedor con visión) y Markdown (listas y tablas). Toda la lectura es determinista: nada no reconocido se descarta en silencio.
-- **Modo Solo local** por defecto: ninguna conexión remota sin que actives un proveedor. Ollama o API compatible con OpenAI; las claves se guardan cifradas con `safeStorage` del sistema operativo.
+- **Modo Solo local** por defecto: ninguna conexión remota sin que actives un proveedor. Ollama local o cualquier API compatible con OpenAI: OpenAI, Anthropic (Claude), Google (Gemini), xAI (Grok), OpenRouter o un endpoint personalizado; las claves se guardan cifradas con `safeStorage` del sistema operativo.
+- **Panel de consumo**: registro local de peticiones y tokens por día, proveedor y modelo; límite diario opcional con barra de progreso (las API gratuitas suelen tener cupo diario).
 - **Persistencia segura**: guardado atómico en `.vbdproj`, historial de deshacer/rehacer y recuperación automática ante un cierre inesperado.
 
 ## Inicio rápido

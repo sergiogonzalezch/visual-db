@@ -9,7 +9,7 @@ Aplicación de escritorio para diseñar modelos de bases de datos relacionales d
 - Node.js 20 o superior (probado con Node 24) y npm.
 - Windows, macOS o Linux (desarrollo probado en Windows).
 - Para la IA local: [Ollama](https://ollama.com) instalado y en ejecución.
-- O bien una API compatible con OpenAI (clave `sk-…`).
+- O bien una API remota: OpenAI, Anthropic (Claude), Google (Gemini), xAI (Grok), OpenRouter u otro servicio compatible con OpenAI (clave según el proveedor).
 
 ---
 
@@ -109,8 +109,16 @@ Menú *Modelo → Configuración de proveedor…* (o botón *Modelo / IA*):
 
 - **Modo Solo local** (activado por defecto): no se realiza ninguna conexión remota; la revisión se basa únicamente en validación local determinista.
 - **Ollama (local)**: URL por defecto `http://127.0.0.1:11434`; modelo ej. `qwen2.5vl` (visión) o `llama3.2`.
-- **API compatible con OpenAI**: URL por defecto `https://api.openai.com/v1`; modelo ej. `gpt-4o-mini`; la clave API se guarda cifrada con `safeStorage` del sistema operativo (nunca en texto plano ni en el proyecto).
+- **API remotas compatibles con OpenAI**: se preconfiguran OpenAI, Anthropic (Claude, vía su capa de compatibilidad con OpenAI), Google (Gemini, vía su endpoint compatible), xAI (Grok), OpenRouter (agregador de modelos) y un modo *personalizado* para cualquier endpoint compatible (DeepSeek, Mistral, Groq, Together, vLLM, LiteLLM, LM Studio…). La clave API se guarda cifrada con `safeStorage` del sistema operativo (nunca en texto plano ni en el proyecto).
 - Botón *Probar conexión* para verificar el proveedor y las capacidades (visión, chat, revisión).
+
+### Consumo de tokens
+
+Pestaña *Consumo* en el panel derecho:
+
+- Muestra peticiones y tokens (entrada/salida) del día de hoy, desglose por proveedor y modelo, e historial de días anteriores.
+- El **límite diario** es orientativo: lo configuras tú según el cupo que te asigne cada proveedor gratuito; la aplicación avisa al acercarte o superarlo. El historial se guarda en `<userData>/consumo/uso.json`.
+- Los tokens se registran a partir del campo `usage` de la respuesta; si el proveedor no lo informa, se estiman (~1 token cada 4 caracteres) y se marcan como *≈ estimado*.
 
 La IA solo habla por los canales IPC `ia:*`: recibe el modelo normalizado y devuelve JSON con operaciones del catálogo cerrado; cualquier operación fuera de catálogo o repetida se filtra y se muestra como advertencia.
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Configuracion } from '@shared/ai'
+import { PROVEEDORES_REMOTOS, ProveedorTipo, proveedorRemoto, type Configuracion } from '@shared/ai'
 import { useTienda } from '../estado/tienda'
 
 export function DialogoConfiguracion(): JSX.Element {
@@ -16,6 +16,8 @@ export function DialogoConfiguracion(): JSX.Element {
     ...parche,
     proveedor: { ...ajustes.proveedor, ...(parche.proveedor ?? {}) }
   })
+
+  const preset = proveedorRemoto(ajustes.proveedor.proveedor)
 
   return (
     <div className="dialogo-fondo">
@@ -43,24 +45,28 @@ export function DialogoConfiguracion(): JSX.Element {
             <label>Proveedor</label>
             <select
               value={ajustes.proveedor.proveedor}
-              onChange={(e) =>
+              onChange={(e) => {
+                const tipo = e.target.value as ProveedorTipo
+                const preset = tipo === 'ollama' ? null : proveedorRemoto(tipo)
                 void tienda.guardarAjustes(
                   actualizado({
                     proveedor: {
                       ...ajustes.proveedor,
-                      proveedor: e.target.value as 'ollama' | 'openai',
-                      endpoint:
-                        e.target.value === 'ollama'
-                          ? 'http://127.0.0.1:11434'
-                          : 'https://api.openai.com/v1'
+                      proveedor: tipo,
+                      endpoint: tipo === 'ollama' ? 'http://127.0.0.1:11434' : preset?.endpoint ?? '',
+                      modelo: tipo === 'ollama' ? '' : preset?.modelo ?? ''
                     }
                   }),
                   null
                 )
-              }
+              }}
             >
               <option value="ollama">Ollama (local)</option>
-              <option value="openai">API remota compatible con OpenAI</option>
+              {PROVEEDORES_REMOTOS.map((p) => (
+                <option key={p.tipo} value={p.tipo}>
+                  {p.etiqueta}
+                </option>
+              ))}
             </select>
           </div>
           <div className="campo">
@@ -79,7 +85,13 @@ export function DialogoConfiguracion(): JSX.Element {
             <label>Modelo</label>
             <input
               value={ajustes.proveedor.modelo}
-              placeholder={ajustes.proveedor.proveedor === 'ollama' ? 'Ej: qwen2.5vl o llama3.2' : 'Ej: gpt-4o-mini'}
+              placeholder={
+                ajustes.proveedor.proveedor === 'ollama'
+                  ? 'Ej: qwen2.5vl o llama3.2'
+                  : preset?.modelo
+                    ? `Ej: ${preset.modelo}`
+                    : 'Ej: gpt-4o-mini'
+              }
               onChange={(e) =>
                 void tienda.guardarAjustes(
                   actualizado({ proveedor: { ...ajustes.proveedor, modelo: e.target.value } }),
@@ -88,13 +100,14 @@ export function DialogoConfiguracion(): JSX.Element {
               }
             />
           </div>
+          {preset?.nota && <div className="aviso-importacion">{preset.nota}</div>}
           {ajustes.proveedor.proveedor !== 'ollama' && (
             <div className="campo">
               <label>Clave de API {ajustes.proveedor.claveApiEstablecida ? '(clave guardada — escribe una nueva solo para reemplazarla)' : ''}</label>
               <input
                 type="password"
                 value={claveNueva}
-                placeholder={ajustes.proveedor.claveApiEstablecida ? '••••••••' : 'sk-…'}
+                placeholder={ajustes.proveedor.claveApiEstablecida ? '••••••••' : preset?.clavePlaceholder ?? 'sk-…'}
                 onChange={(e) => setClaveNueva(e.target.value)}
               />
             </div>

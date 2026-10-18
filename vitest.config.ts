@@ -12,7 +12,8 @@ export default defineConfig({
     include: [
       'src/renderer/src/domain/**/*.test.ts',
       'src/renderer/src/importadores/**/*.test.ts',
-      'src/main/importadores/**/*.test.ts'
+      'src/main/importadores/**/*.test.ts',
+      'src/main/ia/**/*.test.ts'
     ],
     environment: 'node'
   }

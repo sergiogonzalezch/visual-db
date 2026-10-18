@@ -24,6 +24,7 @@ const CONFIG_DEFECTO: Configuracion = {
     modelo: '',
     claveApiEstablecida: false
   },
+  limiteDiarioTokens: null,
   ultimoProyecto: null
 }
 
@@ -40,6 +41,7 @@ export function cargarConfiguracion(): Configuracion {
     return {
       soloLocal: guardada.soloLocal ?? true,
       proveedor: { ...CONFIG_DEFECTO.proveedor, ...guardada.proveedor },
+      limiteDiarioTokens: typeof guardada.limiteDiarioTokens === 'number' ? guardada.limiteDiarioTokens : null,
       ultimoProyecto: guardada.ultimoProyecto ?? null
     }
   } catch {
@@ -56,6 +58,7 @@ export function guardarConfiguracion(config: Configuracion, claveNueva: string |
       modelo: config.proveedor.modelo,
       claveApiEstablecida: false
     },
+    limiteDiarioTokens: typeof config.limiteDiarioTokens === 'number' ? config.limiteDiarioTokens : null,
     ultimoProyecto: config.ultimoProyecto ?? null
   }
   if (claveNueva !== null) {
@@ -86,7 +89,7 @@ function exigirProveeduria(config: Configuracion): { adaptador: AdaptadorProveed
   if (!config.proveedor.modelo) {
     throw new ErrorProveedoria('No hay un modelo configurado. Elige uno en Modelo → Configuración.', 'sin-modelo')
   }
-  const clave = config.proveedor.proveedor === 'openai' ? obtenerClaveApi('openai') : null
+  const clave = config.proveedor.proveedor === 'ollama' ? null : obtenerClaveApi(config.proveedor.proveedor)
   return { adaptador: adaptadorDe(config.proveedor), clave }
 }
 
@@ -103,7 +106,7 @@ export async function probarConexion(config: Configuracion): Promise<ResultadoPr
   if (config.proveedor.proveedor === 'ollama') {
     return adaptadorOllama.probarConexion(config.proveedor, null)
   }
-  return adaptadorOpenAI.probarConexion(config.proveedor, obtenerClaveApi('openai'))
+  return adaptadorOpenAI.probarConexion(config.proveedor, obtenerClaveApi(config.proveedor.proveedor))
 }
 
 const MAX_INTENTOS = 2

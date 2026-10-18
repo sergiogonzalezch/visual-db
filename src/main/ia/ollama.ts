@@ -2,6 +2,7 @@ import {
   BorradorImportacionIA,
   CapacidadesProveedor,
   ConfigProveedor,
+  OperacionConsumo,
   RespuestaChatIA,
   RespuestaRevisionIA,
   ResultadoPruebaConexion
@@ -15,6 +16,7 @@ import {
   capacidadesPorDefecto,
   extraerJson
 } from './adaptador'
+import { estimarTokens, registrarConsumo } from './consumo'
 
 function urlBase(config: ConfigProveedor): string {
   return config.endpoint.replace(/\/+$/, '')
@@ -23,7 +25,7 @@ function urlBase(config: ConfigProveedor): string {
 async function chatOllama(
   config: ConfigProveedor,
   mensajes: MensajeProveedor[],
-  opciones: { formatoJson: boolean; signal: AbortSignal; imagenes?: string[] }
+  opciones: { formatoJson: boolean; signal: AbortSignal; imagenes?: string[]; operacion: OperacionConsumo }
 ): Promise<string> {
   const mensajesFinal = opciones.imagenes
     ? mensajes.map((m, i) =>
@@ -48,8 +50,32 @@ async function chatOllama(
     const texto = await respuesta.text().catch(() => '')
     throw new Error(`Ollama respondió ${respuesta.status}: ${texto.slice(0, 200)}`)
   }
-  const datos = (await respuesta.json()) as { message?: { content?: string } }
-  return datos.message?.content ?? ''
+  const datos = (await respuesta.json()) as {
+    message?: { content?: string }
+    prompt_eval_count?: number
+    eval_count?: number
+  }
+  const contenido = datos.message?.content ?? ''
+  if (typeof datos.prompt_eval_count === 'number' || typeof datos.eval_count === 'number') {
+    registrarConsumo({
+      proveedor: 'ollama',
+      modelo: config.modelo,
+      operacion: opciones.operacion,
+      entrada: datos.prompt_eval_count ?? 0,
+      salida: datos.eval_count ?? 0,
+      estimado: false
+    })
+  } else {
+    registrarConsumo({
+      proveedor: 'ollama',
+      modelo: config.modelo,
+      operacion: opciones.operacion,
+      entrada: estimarTokens(JSON.stringify(mensajesFinal)),
+      salida: estimarTokens(contenido),
+      estimado: true
+    })
+  }
+  return contenido
 }
 
 function normalizarRevision(texto: string): RespuestaRevisionIA {
@@ -114,7 +140,7 @@ export const adaptadorOllama: AdaptadorProveedor = {
           content: `Modelo y contexto:\n${contenido}\n\nDevuelve el JSON de la revisión.`
         }
       ],
-      { formatoJson: true, signal }
+      { formatoJson: true, signal, operacion: 'revision' }
     )
     return normalizarRevision(texto)
   },
@@ -134,7 +160,7 @@ export const adaptadorOllama: AdaptadorProveedor = {
           }`
         }
       ],
-      { formatoJson: false, signal }
+      { formatoJson: false, signal, operacion: 'chat' }
     )
     return { contenido: texto, propuestas: [] }
   },
@@ -152,7 +178,7 @@ export const adaptadorOllama: AdaptadorProveedor = {
             '{"resumen":string,"entidades":[],"relaciones":[],"reglas":[],"ambiguedades":[]}. No inventes contenido ilegible.'
         }
       ],
-      { formatoJson: true, signal, imagenes: [imagenBase64] }
+      { formatoJson: true, signal, imagenes: [imagenBase64], operacion: 'imagen' }
     )
     const json = extraerJson(texto)
     if (!json) throw new Error('La respuesta del modelo de visión no contiene JSON.')
@@ -180,7 +206,7 @@ export const adaptadorOllama: AdaptadorProveedor = {
             texto.slice(0, 12000)
         }
       ],
-      { formatoJson: true, signal }
+      { formatoJson: true, signal, operacion: 'texto' }
     )
     const json = extraerJson(respuesta)
     if (!json) throw new Error('La respuesta no contiene JSON.')

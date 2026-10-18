@@ -5,6 +5,7 @@ import type {
   Configuracion,
   RespuestaChatIA,
   RespuestaRevisionIA,
+  ResumenConsumo,
   ResultadoPruebaConexion,
   SolicitudChat,
   SolicitudRevision
@@ -44,6 +45,8 @@ const api = {
     ipcRenderer.invoke('ia:interpretar-imagen', imagenBase64, mime),
   interpretarTexto: (texto: string, nombreArchivo: string): Promise<BorradorImportacionIA> =>
     ipcRenderer.invoke('ia:interpretar-texto', texto, nombreArchivo),
+  consumo: (): Promise<ResumenConsumo> => ipcRenderer.invoke('ia:consumo'),
+  limpiarConsumo: (): Promise<ResumenConsumo> => ipcRenderer.invoke('ia:consumo-limpiar'),
   importarDrawio: (): Promise<{ ruta: string; borrador: unknown } | null> =>
     ipcRenderer.invoke('importar:drawio-archivo'),
   importarImagen: (): Promise<{ ruta: string; base64: string; mime: string } | null> =>

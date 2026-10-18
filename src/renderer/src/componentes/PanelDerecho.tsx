@@ -2,6 +2,7 @@ import { useTienda } from '../estado/tienda'
 import { PanelPropiedades } from './PanelPropiedades'
 import { PanelRevision } from './PanelRevision'
 import { PanelChat } from './PanelChat'
+import { PanelConsumo } from './PanelConsumo'
 
 export function PanelDerecho(): JSX.Element {
   const tienda = useTienda()
@@ -27,11 +28,18 @@ export function PanelDerecho(): JSX.Element {
         >
           Chat
         </button>
+        <button
+          className={tienda.pestana === 'consumo' ? 'activa' : ''}
+          onClick={() => tienda.setPestana('consumo')}
+        >
+          Consumo
+        </button>
       </div>
       <div className="contenido-panel">
         {tienda.pestana === 'propiedades' && <PanelPropiedades />}
         {tienda.pestana === 'revision' && <PanelRevision />}
         {tienda.pestana === 'chat' && <PanelChat />}
+        {tienda.pestana === 'consumo' && <PanelConsumo />}
       </div>
     </aside>
   )

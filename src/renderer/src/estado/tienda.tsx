@@ -11,6 +11,7 @@ import {
 import type {
   Configuracion,
   MensajeChat,
+  ResumenConsumo,
   ResultadoPruebaConexion
 } from '@shared/ai'
 import { api } from '../ipc'
@@ -48,7 +49,7 @@ import { BorradorProyecto, borradorAProyecto, borradorIABorrador } from '../impo
 import { importarMarkdown } from '../importadores/markdown'
 
 export type Herramienta = 'seleccion' | 'entidad' | 'relacion' | 'nota'
-export type Pestana = 'propiedades' | 'revision' | 'chat'
+export type Pestana = 'propiedades' | 'revision' | 'chat' | 'consumo'
 export type Seleccion =
   | { tipo: 'entidad'; id: string }
   | { tipo: 'relacion'; id: string }
@@ -76,6 +77,7 @@ interface Tienda {
   hallazgos: HallazgoLocal[]
   resultadoNormalizacion: ResultadoNormalizacion | null
   ajustes: Configuracion | null
+  consumo: ResumenConsumo | null
   borradorImportacion: BorradorProyecto | null
   ambiguidadesBorrador: Ambiguedad[]
   mostrarConfiguracion: boolean
@@ -132,6 +134,8 @@ interface Tienda {
   setAviso: (texto: string | null) => void
   guardarAjustes: (config: Configuracion, claveNueva: string | null) => Promise<void>
   probarConexion: () => Promise<ResultadoPruebaConexion | null>
+  refrescarConsumo: () => Promise<void>
+  limpiarConsumo: () => Promise<void>
   restaurarRecuperacion: (proyecto: Proyecto, historial: Historial) => void
   descartarRecuperacion: () => void
   recuperacionPendiente: { fecha: string; proyecto: Proyecto; historial: Historial } | null
@@ -168,6 +172,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   const [hallazgos, setHallazgos] = useState<HallazgoLocal[]>([])
   const [resultadoNormalizacion, setResultadoNormalizacion] = useState<ResultadoNormalizacion | null>(null)
   const [ajustes, setAjustes] = useState<Configuracion | null>(null)
+  const [consumo, setConsumo] = useState<ResumenConsumo | null>(null)
   const [estadoBorrador, setEstadoBorrador] = useState<EstadoBorrador | null>(null)
   const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false)
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
@@ -175,6 +180,20 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   const [entidadOrigenRelacion, setEntidadOrigenRelacion] = useState<string | null>(null)
   const [recuperacionPendiente, setRecuperacionPendiente] =
     useState<{ fecha: string; proyecto: Proyecto; historial: Historial } | null>(null)
+
+  const refrescarConsumo = useCallback(async () => {
+    try {
+      const resumen = await api().consumo()
+      setConsumo(resumen)
+    } catch {
+      // el consumo no debe interrumpir el flujo
+    }
+  }, [])
+
+  const limpiarConsumo = useCallback(async () => {
+    const resumen = await api().limpiarConsumo()
+    setConsumo(resumen)
+  }, [])
 
   const proyectoRef = useRef(proyecto)
   proyectoRef.current = proyecto
@@ -379,11 +398,12 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       const { proyecto: proyectoBase } = borradorAProyecto(borrador, proyectoRef.current.nombre)
       setEstadoBorrador({ borrador, proyectoBase, resoluciones: proyectoBase.revision.ambiguidades.map(() => null) })
       setEstadoIA((prev) => ({ ...prev, revisando: false }))
+      void refrescarConsumo()
     } catch (error) {
       setEstadoIA((prev) => ({ ...prev, revisando: false }))
       setAviso(`Importación de imagen fallida: ${(error as Error).message}`)
     }
-  }, [ajustes])
+  }, [ajustes, refrescarConsumo])
 
   const importarMarkdownFlujo = useCallback(async () => {
     try {
@@ -410,12 +430,13 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         const { proyecto: proyectoBase } = borradorAProyecto(borrador, proyectoRef.current.nombre)
         setEstadoBorrador({ borrador, proyectoBase, resoluciones: proyectoBase.revision.ambiguidades.map(() => null) })
         setEstadoIA((prev) => ({ ...prev, revisando: false }))
+        void refrescarConsumo()
       } catch (error) {
         setEstadoIA((prev) => ({ ...prev, revisando: false }))
         setAviso(`La interpretación IA falló: ${(error as Error).message}`)
       }
     },
-    []
+    [refrescarConsumo]
   )
 
   const resolverAmbiguedadBorrador = useCallback<Tienda['resolverAmbiguedadBorrador']>((indice, resolucion) => {
@@ -544,6 +565,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       setPestana('revision')
       setSucio(true)
       setEstadoIA((prev) => ({ ...prev, revisando: false }))
+      void refrescarConsumo()
     } catch (error) {
       setEstadoIA((prev) => ({ ...prev, revisando: false, error: (error as Error).message }))
       setMensajesChat((prev) => [
@@ -555,7 +577,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         }
       ])
     }
-  }, [])
+  }, [refrescarConsumo])
 
   const aceptarPropuesta = useCallback((id: string) => {
     const propuesta = proyectoRef.current.propuestas.find((p) => p.id === id)
@@ -610,6 +632,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         }
       ])
       setEstadoIA((prev) => ({ ...prev, chateando: false }))
+      void refrescarConsumo()
     } catch (error) {
       setEstadoIA((prev) => ({ ...prev, chateando: false, error: (error as Error).message }))
       setMensajesChat((prev) => [
@@ -621,7 +644,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         }
       ])
     }
-  }, [mensajesChat])
+  }, [mensajesChat, refrescarConsumo])
 
   const chatear = useCallback(
     async (texto: string) => {
@@ -647,6 +670,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
           { rol: 'asistente', contenido: respuesta.contenido, fecha: new Date().toISOString() }
         ])
         setEstadoIA((prev) => ({ ...prev, chateando: false }))
+        void refrescarConsumo()
       } catch (error) {
         setEstadoIA((prev) => ({ ...prev, chateando: false, error: (error as Error).message }))
         setMensajesChat((prev) => [
@@ -659,7 +683,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         ])
       }
     },
-    [mensajesChat]
+    [mensajesChat, refrescarConsumo]
   )
 
   const analizar = useCallback(() => {
@@ -755,6 +779,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       const config = await api().obtenerAjustes()
       if (cancelado) return
       setAjustes(config)
+      void refrescarConsumo()
       let idRecuperacion = proyectoRef.current.id
       if (config.ultimoProyecto?.ruta) {
         const resultado = await api().abrirProyectoRuta(config.ultimoProyecto.ruta)
@@ -851,6 +876,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       hallazgos,
       resultadoNormalizacion,
       ajustes,
+      consumo,
       borradorImportacion: estadoBorrador?.borrador ?? null,
       ambiguidadesBorrador: (estadoBorrador?.proyectoBase.revision.ambiguidades ?? []).map(
         (ambiguedad, i) => ({
@@ -900,6 +926,8 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       setAviso,
       guardarAjustes,
       probarConexion,
+      refrescarConsumo,
+      limpiarConsumo,
       restaurarRecuperacion,
       descartarRecuperacion,
       recuperacionPendiente,
@@ -920,6 +948,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       hallazgos,
       resultadoNormalizacion,
       ajustes,
+      consumo,
       estadoBorrador,
       mostrarConfiguracion,
       mostrarHistorial,
@@ -954,6 +983,8 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       analizar,
       guardarAjustes,
       probarConexion,
+      refrescarConsumo,
+      limpiarConsumo,
       restaurarRecuperacion,
       descartarRecuperacion,
       recuperacionPendiente,

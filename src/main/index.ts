@@ -6,6 +6,7 @@ import {
   Configuracion,
   RespuestaChatIA,
   RespuestaRevisionIA,
+  ResumenConsumo,
   ResultadoPruebaConexion,
   SolicitudChat,
   SolicitudRevision
@@ -32,6 +33,7 @@ import {
   revisar
 } from './ia/coordinador'
 import { importarDrawio } from './importadores/drawio-borrador'
+import { limpiarConsumo, resumenConsumo } from './ia/consumo'
 
 let ventana: BrowserWindow | null = null
 let rutaAbierta: string | null = null
@@ -225,6 +227,15 @@ function registrarIPC(): void {
 
   ipcMain.handle('ia:interpretar-texto', async (_e, texto: string, nombreArchivo: string): Promise<BorradorImportacionIA> => {
     return interpretarTexto(cargarConfiguracion(), texto, nombreArchivo)
+  })
+
+  ipcMain.handle('ia:consumo', (): ResumenConsumo => {
+    return resumenConsumo(cargarConfiguracion().limiteDiarioTokens)
+  })
+
+  ipcMain.handle('ia:consumo-limpiar', (): ResumenConsumo => {
+    limpiarConsumo()
+    return resumenConsumo(cargarConfiguracion().limiteDiarioTokens)
   })
 
   ipcMain.handle('importar:drawio-archivo', async () => {
