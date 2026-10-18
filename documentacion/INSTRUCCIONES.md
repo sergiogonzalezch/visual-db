@@ -32,7 +32,7 @@ node node_modules/electron/install.js
 | Comando | Descripción |
 |---|---|
 | `npm run dev` | Arranca en desarrollo (ventana de Electron + HMR del renderer) |
-| `npm run test` | Ejecuta las pruebas con Vitest (dominio e importadores) |
+| `npm run test` | Ejecuta las pruebas con Vitest (dominio, importadores, IA, persistencia y presentación) |
 | `npm run typecheck` | Comprobación de tipos de main/preload y renderer |
 | `npm run build` | Compila main, preload y renderer a `out/` |
 | `npm start` | Vista previa de la compilación (`preview`) |
@@ -48,12 +48,12 @@ Flujo recomendado antes de commitear: `npm run test && npm run typecheck && npm 
 ### 4.1 Flujo general
 
 1. **Crear o importar** un modelo:
-   - *Nuevo* desde cero (botón o `Ctrl+N`).
+   - *Archivo → Nuevo proyecto* desde cero (`Ctrl+N`).
    - *Importar draw.io* (`.drawio` / `.xml`), *imagen* de un diagrama o *Markdown*.
    - Al importar se abre el diálogo **Confirmar interpretación importada**: revisa entidades, conexiones, reglas y ambigüedades; resuelve cada ambigüedad con sus acciones (o déjala pendiente) y confirma.
 2. **Editar en el lienzo** con las herramientas (ver §5).
-3. **Validar** con *Validar local* (hallazgos estructurales y de normalización 1FN–BCNF).
-4. **Pedir revisión IA** (`Ctrl+R` o menú *Revisar*): el modelo propone operaciones; cada propuesta se aprueba, rechaza o discute. Nada se aplica sin tu confirmación.
+3. **Revisar reglas** desde el desplegable *Revisar* (hallazgos estructurales y de normalización 1FN–BCNF, sin llamadas a IA).
+4. **Revisar con IA** desde el mismo desplegable o con `Ctrl+R`: el modelo propone operaciones; cada propuesta se aprueba, rechaza o discute. Nada se aplica sin tu confirmación.
 5. **Guardar** (`Ctrl+S`) en formato `.vbdproj`.
 
 ### 4.2 Revisión y propuestas
@@ -61,7 +61,23 @@ Flujo recomendado antes de commitear: `npm run test && npm run typecheck && npm 
 - Panel **Revisión**: ambigüedades de interpretación, hallazgos de validación, análisis de normalización y tarjetas de propuestas IA.
 - En cada propuesta: **Aceptar** (aplicación atómica con deshacer), **Rechazar**, **Comparar** (vista antes/después en el lienzo con `Vista propuesta`) y **Discutir** (abre el chat con la propuesta como contexto).
 - Si el diseño cambia tras emitirse una propuesta, queda marcada como desactualizada y no puede aplicarse.
-- El chat (panel derecho) también puede proponer operaciones de forma conversacional.
+- El chat permite explicar el diseño y discutir propuestas; conversar no aplica cambios al modelo.
+
+### Inspector y vistas del lienzo
+
+- Abre el inspector con la pestaña situada a media altura del borde derecho. Se desliza sobre el lienzo, sin desplazar el diseño.
+- Contiene **Propiedades**, **Revisión**, **Chat** y **Consumo**. Cierra con el tirador, el botón de cierre o `Esc` cuando no haya un diálogo abierto.
+- La cápsula flotante centrada en la parte superior muestra **Modelo lógico** y las vistas **Actual/Propuesto**. Propuesto se habilita al comparar una propuesta; volver a Actual termina la comparación.
+- Al crear una relación, la indicación para elegir la entidad destino aparece debajo de la cápsula.
+
+### Conversaciones por proyecto
+
+- **Nuevo proyecto** inicia una conversación limpia con el mensaje de bienvenida y borra el texto sin enviar.
+- **Abrir** restaura únicamente los mensajes del archivo seleccionado. Los archivos antiguos sin chat muestran la bienvenida.
+- **Guardar** y **Guardar como** incluyen los mensajes en el `.vbdproj`; enviar o recibir mensajes marca el proyecto con cambios pendientes y activa la recuperación automática.
+- Al cambiar de proyecto, las respuestas de chat o revisión IA pendientes del anterior se ignoran. Esto no cancela necesariamente la petición al proveedor.
+- El texto sin enviar es temporal. Los mensajes enviados quedan fuera de Deshacer/Rehacer del diseño.
+- Compartir el archivo también comparte la conversación. Las credenciales continúan fuera del proyecto.
 
 ### 4.3 Importaciones
 
@@ -77,7 +93,9 @@ El marcaje `desconocido` es explícito en todo el modelo: cardinalidades, tipos 
 
 ## 5. Herramientas y atajos del lienzo
 
-Herramientas (barra izquierda):
+Herramientas (panel vertical flotante):
+
+Arrastra el asa superior para mover el panel dentro del lienzo. También puedes enfocar el asa y usar las flechas; `Shift` aumenta el paso y `Esc` cancela el arrastre. **Restablecer** devuelve su posición inicial.
 
 | Herramienta | Uso |
 |---|---|
@@ -110,7 +128,8 @@ Menú *Modelo → Configuración de proveedor…* (o botón *Modelo / IA*):
 - **Modo Solo local** (activado por defecto): no se realiza ninguna conexión remota; la revisión se basa únicamente en validación local determinista.
 - **Ollama (local)**: URL por defecto `http://127.0.0.1:11434`; modelo ej. `qwen2.5vl` (visión) o `llama3.2`.
 - **API remotas compatibles con OpenAI**: se preconfiguran OpenAI, Anthropic (Claude, vía su capa de compatibilidad con OpenAI), Google (Gemini, vía su endpoint compatible), xAI (Grok), OpenRouter (agregador de modelos) y un modo *personalizado* para cualquier endpoint compatible (DeepSeek, Mistral, Groq, Together, vLLM, LiteLLM, LM Studio…). La clave API se guarda cifrada con `safeStorage` del sistema operativo (nunca en texto plano ni en el proyecto).
-- Botón *Probar conexión* para verificar el proveedor y las capacidades (visión, chat, revisión).
+- Selecciona un proveedor, introduce su URL y credencial, y pulsa **Conectar**. Tras una conexión exitosa se habilita el catálogo de modelos con búsqueda; selecciona uno para guardarlo. Cada proveedor conserva su URL, credencial y último modelo por separado.
+- La lista de modelos confirma acceso al catálogo, pero no garantiza permisos de generación para todos los modelos. Si una revisión falla por modelo no disponible, vuelve a seleccionar uno accesible para tu cuenta.
 
 ### Consumo de tokens
 
@@ -126,7 +145,7 @@ La IA solo habla por los canales IPC `ia:*`: recibe el modelo normalizado y devu
 
 ## 7. Archivos y recuperación
 
-- **Proyecto**: extensión `.vbdproj` (JSON con `formatoVersion`). El guardado es atómico (archivo temporal + renombrado) y solo se cierra si la escritura tiene éxito.
+- **Proyecto**: extensión `.vbdproj` (JSON con `formatoVersion`, `proyecto`, `historial` y `mensajesChat` opcional para compatibilidad). El guardado es atómico (archivo temporal + renombrado).
 - **Recuperación automática**: copia de seguridad en `<userData>/recuperacion` (se escribe con debounce ~3 s). Al arrancar con copia disponible se ofrece restaurarla (menú *Proyecto → Información de recuperación*).
 - **Credenciales**: `<userData>/credenciales`; **ajustes IA**: `<userData>/ajustes`.
 - Rutas de `userData` según plataforma: Windows `%APPDATA%/<nombre-app>`, macOS `~/Library/Application Support/<nombre-app>`, Linux `~/.config/<nombre-app>`.
@@ -168,7 +187,15 @@ Principios arquitectónicos (ver `plan-aplicacion-visual-bases-de-datos.md`):
 npm run test
 ```
 
-Cobertura actual (16 pruebas): operaciones con inversión, historial (deshacer/rehacer), servicio de aprobación (atómico, desactualización, rechazo), análisis de normalización (1FN/3FN, insuficiencia de datos) e importadores (draw.io comprimido/sin comprimir y Markdown listas/tablas).
+Última verificación de esta etapa: **60 pruebas en 15 archivos**, comprobación de tipos y compilación de producción correctas. Incluye dominio, importadores, transporte y proveedores IA, credenciales, consumo, límites de posición del panel flotante, lectura de conversaciones y persistencia/recuperación por proyecto. Las pruebas de proveedores remotos usan simulaciones.
+
+## Identidad visual y distribución
+
+El icono aprobado es el **concepto C**, un cilindro de base de datos conectado a una tabla. Los originales y derivados PNG/ICO/ICNS están en `resources/`; los favicon de 16 y 32 px y el ICO están en `src/renderer/public/`. Véase [origen y prompt](../resources/README.md).
+
+Electron usa el PNG como icono de ventana y del Dock de macOS. `package.json` configura los formatos de icono para el empaquetado futuro. Reinicia Electron para ver cambios en el icono; el navegador puede conservar el favicon en caché.
+
+El ejecutador simplificado y la distribución de instaladores por Windows, macOS y Linux están pendientes; no se han generado ni publicado en esta etapa. La integración visual nativa en macOS y Linux requiere comprobación en esos sistemas.
 
 ---
 

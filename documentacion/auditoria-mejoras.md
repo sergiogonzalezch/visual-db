@@ -1,5 +1,29 @@
 # Auditoría: proveedores, persistencia e interfaz
 
+## Actualización del 18 de octubre de 2026: interfaz Foco y chat por proyecto
+
+- Herramientas verticales flotantes: asa de arrastre, movimiento con flechas y Shift, límites del lienzo y restablecimiento de posición.
+- Inspector deslizable sobre el lienzo, con tirador en el borde derecho, cierre con Escape y retirada del foco cuando está oculto.
+- Cápsula flotante centrada con Modelo lógico y Actual/Propuesto; conserva las condiciones de comparación y los avisos de creación de relaciones.
+- Iconos SVG reutilizables para acciones de la interfaz, sin añadir librerías.
+- La causa de la mezcla de chats era un estado de sesión global que Nuevo no limpiaba y Abrir conservaba. Ahora `mensajesChat` forma parte del `.vbdproj`, con bienvenida para archivos antiguos, recuperación automática y borrado del texto sin enviar al cambiar de sesión.
+- Las respuestas pendientes de chat, discusión de propuestas y revisión IA se comprueban contra la sesión de origen antes de modificar el proyecto actual. Un guardado que coincide con mensajes nuevos no elimina su indicador de cambios pendientes.
+- Identidad C aplicada a icono de Electron, Dock y favicon; PNG, ICO e ICNS en el repositorio. El ejecutador y los instaladores siguen pendientes.
+
+Validación: 60 pruebas en 15 archivos, tipos y build correctos. Las comprobaciones automatizadas no sustituyen la revisión visual nativa de los iconos en Windows/macOS/Linux.
+
+Comprobación manual recomendada:
+
+1. Mover herramientas con ratón y teclado; redimensionar y restablecer.
+2. Abrir/cerrar el inspector y comprobar foco, Escape y edición del lienzo.
+3. Comparar una propuesta y volver a Actual; crear una relación y verificar el aviso.
+4. Guardar chat en A, crear B, comprobar chat limpio y reabrir A.
+5. Cambiar de proyecto mientras llega una respuesta IA; comprobar que no aparece en el nuevo.
+6. Reabrir un archivo antiguo sin mensajes y restaurar una copia de recuperación con chat.
+7. Reiniciar Electron y revisar el icono C y el favicon, incluidos tamaños pequeños.
+
+Las secciones siguientes documentan las etapas anteriores y sus resultados históricos.
+
 ## Hallazgos y causa raíz
 
 1. La credencial estaba cifrada por proveedor, pero el formulario marcaba la clave como ausente al cambiar de proveedor. URL y modelo solo existían para el proveedor activo. Conectar además borraba el modelo y vaciaba el campo de clave; faltaba distinguir campo vacío de clave guardada.
