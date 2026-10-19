@@ -15,8 +15,17 @@ export async function solicitar(url: string, opciones: RequestInit = {}): Promis
     }
     if (respuesta.ok) return respuesta
     if ((respuesta.status === 429 || respuesta.status >= 500) && intento + 1 < intentos) {
-      const espera = Number(respuesta.headers.get('retry-after'))
-      const demora = Number.isFinite(espera) && espera > 0 ? Math.min(espera * 1000, 5000) : 500 * 2 ** intento
+      const cabecera = respuesta.headers.get('retry-after')
+      const segundos = cabecera !== null && /^\d+(?:\.\d+)?$/.test(cabecera.trim()) ? Number(cabecera) : NaN
+      const fecha = cabecera !== null ? Date.parse(cabecera) : NaN
+      const indicada = Number.isFinite(segundos) ? segundos * 1000 : Number.isFinite(fecha) ? Math.max(0, fecha - Date.now()) : null
+      // No repetir antes del plazo del proveedor ni mantener una conexión de
+      // catálogo bloqueada durante una espera larga.
+      if (indicada !== null && indicada > 5000) {
+        await respuesta.body?.cancel()
+        throw new Error(`El proveedor pidió esperar ${Math.ceil(indicada / 1000)} segundos antes de volver a intentarlo.`)
+      }
+      const demora = indicada ?? 500 * 2 ** intento
       await respuesta.body?.cancel()
       await new Promise<void>((resolve, reject) => {
         if (signal.aborted) { reject(new Error('Solicitud cancelada.')); return }
@@ -37,9 +46,12 @@ export async function solicitar(url: string, opciones: RequestInit = {}): Promis
     if (estado === 404 && /no longer available to new users/i.test(mensaje)) {
       throw new Error('El modelo seleccionado ya no está disponible para nuevos usuarios de este proveedor. La conexión al catálogo funciona, pero tu cuenta no puede generar con ese modelo. Selecciona otro modelo en Modelo / IA; no necesitas reemplazar la clave.')
     }
+    if (estado === 503) {
+      throw new Error('HTTP 503: el modelo no está disponible temporalmente o está saturado. El catálogo puede seguir accesible. Espera y reintenta, o selecciona otro modelo; no necesitas reemplazar la clave por este error.')
+    }
     throw new Error(estado === 401 || estado === 403
       ? 'Autenticación rechazada. Revisa la clave y sus permisos.'
-      : estado === 429 ? 'Límite de tasa alcanzado. Espera unos segundos y vuelve a conectar.'
+      : estado === 429 ? 'Límite de tasa alcanzado. Espera unos segundos y vuelve a intentarlo.'
       : estado === 404 ? 'HTTP 404: la ruta o el modelo solicitado no esta disponible. Revisa la URL base y vuelve a seleccionar un modelo.'
       : `El proveedor respondió HTTP ${estado}. Inténtalo de nuevo más tarde.`)
   }

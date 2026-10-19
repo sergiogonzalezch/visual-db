@@ -6,6 +6,8 @@ No genera SQL ni DDL: trabaja sobre el modelo (entidades, atributos, claves, rel
 
 ## Guías
 
+- **[Índice de documentación](documentacion/README.md)** y **[pendientes por prioridad](documentacion/pendientes.md)**: estado vigente, mejoras y criterios de cierre.
+
 - **[Guía visual paso a paso](documentacion/guia/index.html)**: recorrido ilustrado de proyecto → modelo → reglas → proveedor → IA → aprobación → exportación, con animaciones opcionales y un mapa de funciones filtrable.
 - **[Referencia técnica](documentacion/guia/tecnica.html)**: arquitectura, funciones, contratos IPC, archivos, estados y límites.
 - **[Instrucciones de uso y desarrollo](documentacion/INSTRUCCIONES.md)**: procedimientos, atajos y resolución de problemas.
@@ -44,6 +46,7 @@ Requisitos: Node 20+ (probado con Node 24). Para IA local, [Ollama](https://olla
 |---|---|
 | `npm run dev` | Desarrollo (ventana Electron + HMR) |
 | `npm run test` | Pruebas (Vitest) |
+| `npm run test:e2e` | Compilar y probar Electron con perfil aislado y proveedor controlado |
 | `npm run typecheck` | Comprobación de tipos |
 | `npm run build` | Compilar a `out/` |
 | `npm start` | Abrir la vista previa de Electron |
@@ -66,7 +69,7 @@ El ejecutador simplificado y los instaladores por sistema siguen pendientes. Los
 
 ## Verificación y límites
 
-La última regresión registrada aprobó 99 pruebas deterministas, tipado y compilación; el ensayo optativo de Ollama se ejecutó por separado con HTTP real. Son resultados de esa sesión, no una garantía de disponibilidad o de calidad de todos los proveedores. Consulta [la evidencia](documentacion/pruebas/2026-10-18/informe-correcciones-revision.md) y [los pendientes detallados](documentacion/pruebas/2026-10-18/resumen-sesion-y-pendientes.md).
+La regresión del 19 de octubre aprobó 176 pruebas deterministas, tipado y compilación. Se añadieron pruebas de Electron con perfil aislado (`npm run test:e2e`), casos optativos de rendimiento y una nueva prueba real reducida de Ollama. Los [controles semánticos, accesibilidad básica, reinicios y carga de modelos grandes](documentacion/pruebas/2026-10-19/cierre-7-8-9-11.md) tienen nueva cobertura. Se corrigió el contrato de revisiones y se comprobaron recorridos reales con Mistral y Gemini Flash Lite: revisión, decisión, guardado y reapertura. La aprobación de cambios de negocio generados por IA sigue sin certificar; consulta las [correcciones y pruebas](documentacion/pruebas/2026-10-19/correcciones-contrato-y-pruebas.md). Consulta [el informe y estado de pendientes](documentacion/pruebas/2026-10-19/informe-pendientes.md); estos resultados no garantizan disponibilidad ni calidad semántica de los modelos.
 
 No se generan SQL, DDL, modelos ORM ni esquemas NoSQL ejecutables. Markdown/JSON sirven como documentación de entrada para otra herramienta o agente. La comparación histórica de propuestas aplicadas no está disponible. macOS/Linux, accesibilidad completa e intercambio en herramientas externas requieren completar sus comprobaciones.
 

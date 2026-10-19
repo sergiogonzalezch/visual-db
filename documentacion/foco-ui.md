@@ -1,5 +1,7 @@
 # Foco — implementación de interfaz
 
+> Referencia de diseño/evolución. Estado al 19 de octubre: [índice documental](README.md), [pendientes priorizados](pendientes.md) y [pruebas finales](pruebas/2026-10-19/correcciones-contrato-y-pruebas.md). Los resultados fechados de este documento conservan su contexto.
+
 ## Decisión aprobada
 
 Dirección Foco y una única entrada «Revisar» que ofrece «Revisar reglas» y «Revisar con IA». La primera conserva el analizador determinista de estructura y normalización; la segunda conserva la llamada al proveedor y las propuestas con aprobación explícita.

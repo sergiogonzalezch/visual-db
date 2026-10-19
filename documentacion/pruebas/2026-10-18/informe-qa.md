@@ -1,5 +1,7 @@
 # Informe de prueba funcional y UX — Visual BD
 
+> Informe histórico del 18 de octubre. Consulta los [pendientes vigentes](../../pendientes.md) y las [correcciones y pruebas del 19 de octubre](../2026-10-19/correcciones-contrato-y-pruebas.md); este documento conserva sus resultados originales.
+
 Fecha: 18 de octubre de 2026. Ejecución sobre la aplicación de escritorio abierta, mediante controles reales de Windows, ratón y teclado. Datos exclusivamente ficticios.
 
 ## Resultado ejecutivo

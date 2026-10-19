@@ -188,6 +188,7 @@ export interface PropuestaEntradaIA {
 export interface RespuestaRevisionIA {
   resumen: string
   propuestas: PropuestaEntradaIA[]
+  origen?: { proveedor: string; modelo: string }
 }
 
 export interface SolicitudRevision {

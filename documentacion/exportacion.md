@@ -1,5 +1,7 @@
 # Exportación de diseños
 
+Actualizado el 19 de octubre de 2026. La regresión cubre guardado/exportación por IPC, comparación sin aplicar y modelos grandes; la comprobación con herramientas externas y macOS/Linux permanece pospuesta. Consulta los [pendientes](pendientes.md) y el [informe de pruebas](pruebas/2026-10-19/correcciones-contrato-y-pruebas.md).
+
 ## Uso
 
 1. Abre **Archivo → Exportar…** en la cabecera o el menú nativo.

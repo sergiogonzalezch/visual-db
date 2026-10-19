@@ -12,6 +12,7 @@ import { AdaptadorProveedor } from './adaptador'
 import { adaptadorOllama } from './ollama'
 import { adaptadorOpenAI } from './openai'
 import { obtenerClaveApi } from '../almacen-credenciales'
+import { operacionIAValida } from './operaciones-validas'
 
 export { cargarConfiguracion, guardarConfiguracion } from './configuracion'
 
@@ -127,38 +128,12 @@ export function capacidadesActuales(config: Configuracion) {
   return adaptadorDe(config.proveedor).capacidades(config.proveedor)
 }
 
-const OPS_CONOCIDOS = new Set([
-  'addEntidad',
-  'updateEntidad',
-  'moverEntidad',
-  'redimensionarEntidad',
-  'removeEntidad',
-  'addAtributo',
-  'updateAtributo',
-  'removeAtributo',
-  'addClave',
-  'updateClave',
-  'removeClave',
-  'addRelacion',
-  'updateRelacion',
-  'removeRelacion',
-  'addAtributoRelacion',
-  'updateAtributoRelacion',
-  'removeAtributoRelacion',
-  'addNota',
-  'updateNota',
-  'removeNota',
-  'addRegla',
-  'updateRegla',
-  'removeRegla'
-])
-
 export function filtrarOperacionesIA(operaciones: unknown): { validas: unknown[]; invalidas: number } {
   if (!Array.isArray(operaciones)) return { validas: [], invalidas: 0 }
   const validas: unknown[] = []
   let invalidas = 0
   for (const op of operaciones) {
-    if (op && typeof op === 'object' && typeof (op as { op?: unknown }).op === 'string' && OPS_CONOCIDOS.has((op as { op: string }).op)) {
+    if (operacionIAValida(op)) {
       validas.push(op)
     } else {
       invalidas++
@@ -174,6 +149,9 @@ function validarRespuestaRevision(respuesta: RespuestaRevisionIA): void {
   for (const propuesta of respuesta.propuestas) {
     if (typeof propuesta.titulo !== 'string' || !Array.isArray(propuesta.operaciones)) {
       throw new Error('JSON inválido: propuesta con forma incorrecta.')
+    }
+    if (filtrarOperacionesIA(propuesta.operaciones).invalidas) {
+      throw new Error('La revisión contiene operaciones no compatibles o incompletas. No se incorporó ninguna propuesta. Reintenta o elige otro modelo.')
     }
   }
 }

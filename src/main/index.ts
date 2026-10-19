@@ -27,7 +27,6 @@ import {
   capacidadesActuales,
   cargarConfiguracion,
   chatear,
-  filtrarOperacionesIA,
   guardarConfiguracion,
   interpretarImagen,
   interpretarTexto,
@@ -226,21 +225,9 @@ function registrarIPC(): void {
   })
 
   ipcMain.handle('ia:revisar', async (_e, solicitud: SolicitudRevision): Promise<RespuestaRevisionIA> => {
-    const respuesta = await revisar(cargarConfiguracion(), solicitud)
-    return {
-      ...respuesta,
-      propuestas: respuesta.propuestas.map((p) => {
-        const { validas, invalidas } = filtrarOperacionesIA(p.operaciones)
-        if (invalidas > 0) {
-          return {
-            ...p,
-            explicacion: `${p.explicacion}\n\n(${invalidas} operación(es) no reconocidas del catálogo fueron descartadas.)`,
-            operaciones: validas
-          }
-        }
-        return { ...p, operaciones: validas }
-      })
-    }
+    const config = cargarConfiguracion()
+    const respuesta = await revisar(config, solicitud)
+    return { ...respuesta, origen: { proveedor: config.proveedor.proveedor, modelo: config.proveedor.modelo } }
   })
 
   ipcMain.handle('ia:chat', async (_e, solicitud: SolicitudChat): Promise<RespuestaChatIA> => {

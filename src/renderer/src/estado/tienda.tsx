@@ -131,7 +131,7 @@ interface Tienda {
   }) => void
   solicitarRevision: () => Promise<void>
   cancelarRevision: () => void
-  aceptarPropuesta: (id: string) => void
+  aceptarPropuesta: (id: string, riesgosRevisados?: boolean) => void
   rechazarPropuesta: (id: string, nota: string | null) => void
   discutirPropuesta: (id: string, texto: string) => Promise<void>
   chatear: (texto: string) => Promise<void>
@@ -612,7 +612,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       if (sesion !== sesionChat.current || turno !== turnoRevision.current) return
       const nuevas: Propuesta[] = respuesta.propuestas.map((entrada) =>
         crearPropuesta(origen, {
-          origenIA: ajustes ? { proveedor: ajustes.proveedor.proveedor, modelo: ajustes.proveedor.modelo } : undefined,
+          origenIA: respuesta.origen ?? (ajustes ? { proveedor: ajustes.proveedor.proveedor, modelo: ajustes.proveedor.modelo } : undefined),
           categoria: entrada.categoria,
           prioridad: entrada.prioridad,
           titulo: entrada.titulo,
@@ -655,10 +655,10 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     }
   }, [refrescarConsumo, ajustes])
 
-  const aceptarPropuesta = useCallback((id: string) => {
+  const aceptarPropuesta = useCallback((id: string, riesgosRevisados = false) => {
     const propuesta = proyectoRef.current.propuestas.find((p) => p.id === id)
     if (!propuesta) return
-    const resultado = aplicarPropuesta(proyectoRef.current, historialRef.current, propuesta)
+    const resultado = aplicarPropuesta(proyectoRef.current, historialRef.current, propuesta, riesgosRevisados)
     if (!resultado.ok) {
       setAviso(`No se pudo aplicar la propuesta: ${resultado.motivos.join(' ')}`)
       return

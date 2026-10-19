@@ -3,6 +3,30 @@ import { solicitar } from './http'
 
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 describe('transporte seguro de proveedores', () => {
+  it.each([false, true])('explica saturación sin propagar secretos ni repetir generación: array=%s', async array => {
+    const error = { error: { status: 'UNAVAILABLE', message: 'overloaded secreto-no-mostrar' } }
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(array ? [error] : error), { status: 503 }))
+    vi.stubGlobal('fetch', fetch)
+    const fallo = await solicitar('https://example.com', { method: 'POST' }).catch((e: Error) => e)
+    expect((fallo as Error).message).toContain('saturado')
+    expect((fallo as Error).message).not.toContain('secreto-no-mostrar')
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+  it('no acorta una espera larga solicitada por el proveedor', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response('', { status: 429, headers: { 'Retry-After': '60' } }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(solicitar('https://example.com')).rejects.toThrow('60 segundos')
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+  it('respeta Retry-After expresado como fecha HTTP', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    const fetch = vi.fn().mockResolvedValueOnce(new Response('', { status: 429, headers: { 'Retry-After': 'Thu, 01 Jan 2026 00:00:02 GMT' } })).mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetch)
+    const promesa = solicitar('https://example.com')
+    await vi.advanceTimersByTimeAsync(1999); expect(fetch).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1); expect((await promesa).ok).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
   it.each([false, true])('identifica modelos restringidos sin exponer el cuerpo del proveedor: array=%s', async (array) => {
     const error = { error: { status: 'NOT_FOUND', message: 'This model models/gemini-2.5-flash is no longer available to new users. secreto-no-mostrar' } }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(array ? [error] : error), { status: 404 })))

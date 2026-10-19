@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { DESCONOCIDO, Entidad, hallarEntidad } from '../domain/modelo'
 import { proyectarPropuesta } from '../domain/comparacion'
 import { useTienda } from '../estado/tienda'
@@ -37,6 +38,13 @@ export function Lienzo(): JSX.Element {
   const [zoom, setZoom] = useState(1)
   const [arrastre, setArrastre] = useState<Arrastre | null>(null)
   const [posiciones, setPosiciones] = useState<Record<string, Punto>>({})
+  const inspeccionarConTeclado = useCallback((evento: KeyboardEvent<SVGGElement>, tipo: 'entidad' | 'relacion' | 'nota', id: string) => {
+    if (evento.key !== 'Enter' && evento.key !== ' ') return
+    evento.preventDefault()
+    evento.stopPropagation()
+    tienda.seleccionar({ tipo, id })
+    tienda.setPestana('propiedades')
+  }, [tienda.seleccionar, tienda.setPestana])
 
   const puntoMundo = useCallback(
     (evento: { clientX: number; clientY: number }): Punto => {
@@ -59,6 +67,7 @@ export function Lienzo(): JSX.Element {
   }, [tienda.vista, tienda.propuestaEnComparacion, tienda.proyecto])
 
   const disenoVisible = propuestaActual?.diseno ?? tienda.proyecto.diseno
+  const entidadesPorId = useMemo(() => new Map([...tienda.proyecto.diseno.entidades, ...disenoVisible.entidades].map(e => [e.id, e])), [disenoVisible, tienda.proyecto.diseno])
 
   useEffect(() => {
     const encuadrar = () => {
@@ -68,8 +77,8 @@ export function Lienzo(): JSX.Element {
       const x = Math.min(...cajas.map(c => c.x)), y = Math.min(...cajas.map(c => c.y))
       const ancho = Math.max(...cajas.map(c => c.x + c.ancho)) - x
       const alto = Math.max(...cajas.map(c => c.y + c.alto)) - y
-      const disponible = Math.max(100, rect.width - 240 - (tienda.panelAbierto ? 410 : 0))
-      const escala = Math.max(0.2, Math.min(1.5, disponible / Math.max(1, ancho), (rect.height - 160) / Math.max(1, alto)))
+      const disponible = Math.max(1, rect.width - 240 - (tienda.panelAbierto ? Math.min(410, rect.width - 38) : 0))
+      const escala = Math.min(1.5, disponible / Math.max(1, ancho), Math.max(1, rect.height - 160) / Math.max(1, alto))
       setZoom(escala)
       setPaneo({ x: 180 - x * escala, y: 110 - y * escala })
     }
@@ -126,7 +135,7 @@ export function Lienzo(): JSX.Element {
     return mapa
   }, [tienda.hallazgos])
 
-  const posicionDe = (entidad: Entidad): Punto => posiciones[entidad.id] ?? { x: entidad.x, y: entidad.y }
+  const posicionDe = useCallback((entidad: Entidad): Punto => posiciones[entidad.id] ?? { x: entidad.x, y: entidad.y }, [posiciones])
 
   const finalizarArrastre = useCallback(() => {
     if (!arrastre) return
@@ -141,6 +150,7 @@ export function Lienzo(): JSX.Element {
   }, [arrastre, posiciones, tienda])
 
   const manejarAbajo = (evento: React.MouseEvent<SVGSVGElement>) => {
+    evento.preventDefault()
     const entidadObjetivo = (evento.target as Element).closest('[data-entidad-id]') as SVGElement | null
     const relacionObjetivo = (evento.target as Element).closest('[data-relacion-id]') as SVGElement | null
     const notaObjetivo = (evento.target as Element).closest('[data-nota-id]') as SVGElement | null
@@ -242,10 +252,10 @@ export function Lienzo(): JSX.Element {
     [arrastre, zoom]
   )
 
-  const manejarRueda = (evento: React.WheelEvent<SVGSVGElement>) => {
+  const manejarRueda = useCallback((evento: WheelEvent) => {
     evento.preventDefault()
     const factor = evento.deltaY < 0 ? 1.1 : 0.9
-    const siguiente = Math.min(2.5, Math.max(0.25, zoom * factor))
+    const siguiente = Math.min(2.5, Math.max(Math.min(0.01, zoom), zoom * factor))
     const rect = svgRef.current?.getBoundingClientRect()
     if (!rect) {
       setZoom(siguiente)
@@ -257,84 +267,25 @@ export function Lienzo(): JSX.Element {
     const mundoY = (py - paneo.y) / zoom
     setPaneo({ x: px - mundoX * siguiente, y: py - mundoY * siguiente })
     setZoom(siguiente)
-  }
+  }, [zoom, paneo])
 
-  const entidades = [...disenoVisible.entidades, ...tienda.proyecto.diseno.entidades.filter(e => idsEliminados.has(e.id) && !disenoVisible.entidades.some(v => v.id === e.id))]
-  const centroDe = (id: string): Punto => {
-    const entidad = hallarEntidad(disenoVisible, id) ?? hallarEntidad(tienda.proyecto.diseno, id)
+  useEffect(() => {
+    const svg = svgRef.current
+    // El listener delegado de React es pasivo y no permite impedir scroll.
+    svg?.addEventListener('wheel', manejarRueda, { passive: false })
+    return () => svg?.removeEventListener('wheel', manejarRueda)
+  }, [manejarRueda])
+
+  const entidades = useMemo(() => [...disenoVisible.entidades, ...tienda.proyecto.diseno.entidades.filter(e => idsEliminados.has(e.id) && !disenoVisible.entidades.some(v => v.id === e.id))], [disenoVisible, tienda.proyecto.diseno, idsEliminados])
+  const centroDe = useCallback((id: string): Punto => {
+    const entidad = entidadesPorId.get(id)
     if (!entidad) return { x: 0, y: 0 }
     const p = posicionDe(entidad)
     return { x: p.x + anchoEntidad(entidad) / 2, y: p.y + altoEntidad(entidad) / 2 }
-  }
+  }, [entidadesPorId, posicionDe])
 
-  return (
-    <svg
-      ref={svgRef}
-      className={`${tienda.herramienta === 'entidad' ? 'mover-entidad' : ''} ${tienda.herramienta === 'relacion' ? 'relation' : ''}`}
-      onMouseDown={manejarAbajo}
-      onMouseMove={manejarMover}
-      onMouseUp={finalizarArrastre}
-      onMouseLeave={finalizarArrastre}
-      onWheel={manejarRueda}
-      data-zoom={zoom}
-    >
-      <g transform={`translate(${paneo.x},${paneo.y}) scale(${zoom})`}>
-        {disenoVisible.relaciones.map((relacion) => {
-          const centroOrigen = centroDe(relacion.inicio.entidadId)
-          const centroDestino = centroDe(relacion.fin.entidadId)
-          const origenEntidad =
-            hallarEntidad(disenoVisible, relacion.inicio.entidadId) ??
-            hallarEntidad(tienda.proyecto.diseno, relacion.inicio.entidadId)
-          const destinoEntidad =
-            hallarEntidad(disenoVisible, relacion.fin.entidadId) ??
-            hallarEntidad(tienda.proyecto.diseno, relacion.fin.entidadId)
-          if (!origenEntidad || !destinoEntidad) return null
-          const origen = interseccionBorde({ ...origenEntidad, ...posicionDe(origenEntidad) }, centroDestino)
-          const destino = interseccionBorde({ ...destinoEntidad, ...posicionDe(destinoEntidad) }, centroOrigen)
-          const seleccionada = tienda.seleccion?.tipo === 'relacion' && tienda.seleccion.id === relacion.id
-          const etiquetaInicio = etiquetaCardinalidad(
-            relacion.inicio.cardinalidad.minimo,
-            relacion.inicio.cardinalidad.maximo
-          )
-          const etiquetaFin = etiquetaCardinalidad(relacion.fin.cardinalidad.minimo, relacion.fin.cardinalidad.maximo)
-          const dirX = destino.x - origen.x
-          const dirY = destino.y - origen.y
-          const largo = Math.hypot(dirX, dirY) || 1
-          const ux = dirX / largo
-          const uy = dirY / largo
-          return (
-            <g
-              key={relacion.id}
-              className={`relacion-linea ${seleccionada ? 'seleccionada' : ''} ${idsAfectados.has(relacion.id) ? 'afectada' : ''}`}
-              data-relacion-id={relacion.id}
-            >
-              <title>{relacion.nombre || 'Relación sin nombre'}</title>
-              {seleccionada && <text x={(origen.x + destino.x) / 2} y={(origen.y + destino.y) / 2 - 14}>{relacion.nombre}</text>}
-              <line x1={origen.x} y1={origen.y} x2={destino.x} y2={destino.y} />
-              <line
-                x1={origen.x}
-                y1={origen.y}
-                x2={destino.x}
-                y2={destino.y}
-                stroke="transparent"
-                strokeWidth={14 / zoom}
-              />
-              <text x={origen.x + ux * 28 - uy * 12} y={origen.y + uy * 28 + ux * 14}>
-                {etiquetaInicio}
-              </text>
-              <text x={destino.x - ux * 28 - uy * 12} y={destino.y - uy * 28 + ux * 14}>
-                {etiquetaFin}
-              </text>
-              {idsEliminados.has(relacion.id) && (
-                <text x={(origen.x + destino.x) / 2 - 10} y={(origen.y + destino.y) / 2 - 8} fill="#ff6b6b">
-                  ✕ eliminar
-                </text>
-              )}
-            </g>
-          )
-        })}
-
-        {entidades.map((entidad) => {
+  // Paneo y zoom reutilizan las tarjetas; solo cambia la transformación del grupo.
+  const cartasEntidades = useMemo(() => (entidades.map((entidad) => {
           const posicion = posicionDe(entidad)
           const ancho = anchoEntidad(entidad)
           const alto = altoEntidad(entidad)
@@ -348,6 +299,8 @@ export function Lienzo(): JSX.Element {
               key={entidad.id}
               className={`entidad-carta ${seleccionada ? 'seleccionada' : ''} ${fantasmas ? 'fantasma' : ''} ${afectada ? 'afectada' : ''}`}
               data-entidad-id={entidad.id}
+              role="button" tabIndex={0} aria-label={`Inspeccionar entidad ${entidad.nombre}`} aria-pressed={seleccionada}
+              onKeyDown={evento => inspeccionarConTeclado(evento, 'entidad', entidad.id)}
               transform={`translate(${posicion.x},${posicion.y})`}
               opacity={eliminada ? 0.55 : 1}
             >
@@ -392,13 +345,83 @@ export function Lienzo(): JSX.Element {
               )}
             </g>
           )
-        })}
+        })), [entidades, posicionDe, tienda.seleccion, marcasPorElemento, idsAfectados, idsEliminados, idsAñadidos, propuestaActual, inspeccionarConTeclado, tienda.setPestana])
+
+  const lineasRelaciones = useMemo(() => (disenoVisible.relaciones.map((relacion) => {
+          const centroOrigen = centroDe(relacion.inicio.entidadId)
+          const centroDestino = centroDe(relacion.fin.entidadId)
+          const origenEntidad = entidadesPorId.get(relacion.inicio.entidadId)
+          const destinoEntidad = entidadesPorId.get(relacion.fin.entidadId)
+          if (!origenEntidad || !destinoEntidad) return null
+          const origen = interseccionBorde({ ...origenEntidad, ...posicionDe(origenEntidad) }, centroDestino)
+          const destino = interseccionBorde({ ...destinoEntidad, ...posicionDe(destinoEntidad) }, centroOrigen)
+          const seleccionada = tienda.seleccion?.tipo === 'relacion' && tienda.seleccion.id === relacion.id
+          const etiquetaInicio = etiquetaCardinalidad(
+            relacion.inicio.cardinalidad.minimo,
+            relacion.inicio.cardinalidad.maximo
+          )
+          const etiquetaFin = etiquetaCardinalidad(relacion.fin.cardinalidad.minimo, relacion.fin.cardinalidad.maximo)
+          const dirX = destino.x - origen.x
+          const dirY = destino.y - origen.y
+          const largo = Math.hypot(dirX, dirY) || 1
+          const ux = dirX / largo
+          const uy = dirY / largo
+          return (
+            <g
+              key={relacion.id}
+              className={`relacion-linea ${seleccionada ? 'seleccionada' : ''} ${idsAfectados.has(relacion.id) ? 'afectada' : ''}`}
+              data-relacion-id={relacion.id}
+              role="button" tabIndex={0} aria-label={`Inspeccionar relación ${relacion.nombre || `${origenEntidad.nombre} → ${destinoEntidad.nombre}`}`} aria-pressed={seleccionada}
+              onKeyDown={evento => inspeccionarConTeclado(evento, 'relacion', relacion.id)}
+            >
+              <title>{relacion.nombre || 'Relación sin nombre'}</title>
+              {seleccionada && <text x={(origen.x + destino.x) / 2} y={(origen.y + destino.y) / 2 - 14}>{relacion.nombre}</text>}
+              <line x1={origen.x} y1={origen.y} x2={destino.x} y2={destino.y} />
+              <line
+                className="zona-impacto"
+                vectorEffect="non-scaling-stroke"
+                x1={origen.x}
+                y1={origen.y}
+                x2={destino.x}
+                y2={destino.y}
+              />
+              <text x={origen.x + ux * 28 - uy * 12} y={origen.y + uy * 28 + ux * 14}>
+                {etiquetaInicio}
+              </text>
+              <text x={destino.x - ux * 28 - uy * 12} y={destino.y - uy * 28 + ux * 14}>
+                {etiquetaFin}
+              </text>
+              {idsEliminados.has(relacion.id) && (
+                <text x={(origen.x + destino.x) / 2 - 10} y={(origen.y + destino.y) / 2 - 8} fill="#ff6b6b">
+                  ✕ eliminar
+                </text>
+              )}
+            </g>
+          )
+        })), [disenoVisible.relaciones, centroDe, entidadesPorId, posicionDe, tienda.seleccion, idsAfectados, idsEliminados, inspeccionarConTeclado])
+
+  return (
+    <svg
+      ref={svgRef}
+      className={`${tienda.herramienta === 'entidad' ? 'mover-entidad' : ''} ${tienda.herramienta === 'relacion' ? 'relation' : ''}`}
+      onMouseDown={manejarAbajo}
+      onMouseMove={manejarMover}
+      onMouseUp={finalizarArrastre}
+      onMouseLeave={finalizarArrastre}
+      data-zoom={zoom}
+    >
+      <g transform={`translate(${paneo.x},${paneo.y}) scale(${zoom})`}>
+        {lineasRelaciones}
+
+        {cartasEntidades}
 
         {disenoVisible.notas.map((nota) => (
           <g
             key={nota.id}
             className="nota-carta"
             data-nota-id={nota.id}
+            role="button" tabIndex={0} aria-label={`Inspeccionar nota ${nota.texto}`} aria-pressed={tienda.seleccion?.id === nota.id}
+            onKeyDown={evento => inspeccionarConTeclado(evento, 'nota', nota.id)}
             transform={`translate(${nota.x},${nota.y})`}
           >
             <rect width={nota.ancho} height={nota.alto} rx={6} />
@@ -410,7 +433,7 @@ export function Lienzo(): JSX.Element {
           </g>
         ))}
       </g>
-      <text x={10} y={20} fill="#9aa5b8" fontSize={11}>
+      <text x={10} y={20} fill="var(--texto-suave)" fontSize={11}>
         {tienda.vista === 'propuesto'
           ? propuestaActual?.error ? 'No se puede previsualizar. Consulta el detalle de la propuesta.' : `Propuesto · solo lectura · ${(propuestaActual?.propuesta.titulo ?? '').slice(0, 70)}`
           : `${entidades.length} entidades · ${disenoVisible.relaciones.length} relaciones · zoom ${Math.round(zoom * 100)}%`}

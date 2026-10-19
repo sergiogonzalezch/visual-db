@@ -127,8 +127,9 @@ export function PanelPropiedades(): JSX.Element {
       <div>
         <h2>Nota</h2>
         <div className="campo">
-          <label>Texto</label>
+          <label htmlFor="texto-nota">Texto</label>
           <textarea
+            id="texto-nota"
             value={nota.texto}
             onChange={(e) =>
               tienda.aplicar([{ op: 'updateNota', id: nota.id, parche: { texto: e.target.value } }])
@@ -477,6 +478,7 @@ export function PanelPropiedades(): JSX.Element {
       </div>
       <div className="fila">
         <input
+          aria-label="Nombre de la nueva clave candidata"
           placeholder="Nombre de la clave"
           value={nuevaClaveNombre}
           onChange={(e) => setNuevaClaveNombre(e.target.value)}
@@ -554,7 +556,7 @@ export function PanelPropiedades(): JSX.Element {
       <div className="campo">
         <label>Nueva clave foránea</label>
         <div className="fila">
-          <select value={fkEntidadDestino} onChange={(e) => { setFkEntidadDestino(e.target.value); setFkClaveDestino('') }}>
+          <select aria-label="Entidad destino de la clave foránea" value={fkEntidadDestino} onChange={(e) => { setFkEntidadDestino(e.target.value); setFkClaveDestino('') }}>
             <option value="">Entidad destino…</option>
             {proyecto.diseno.entidades
               .filter((e) => e.id !== entidad.id)
@@ -564,7 +566,7 @@ export function PanelPropiedades(): JSX.Element {
                 </option>
               ))}
           </select>
-          <select value={fkClaveDestino} onChange={(e) => setFkClaveDestino(e.target.value)} disabled={!fkEntidadDestino}>
+          <select aria-label="Clave destino de la clave foránea" value={fkClaveDestino} onChange={(e) => setFkClaveDestino(e.target.value)} disabled={!fkEntidadDestino}>
             <option value="">Clave destino…</option>
             {(proyecto.diseno.entidades.find((e) => e.id === fkEntidadDestino)?.claves ?? []).filter(c => c.tipo !== 'foranea' && c.atributoIds.length > 0).map((c) => (
               <option key={c.id} value={c.id}>

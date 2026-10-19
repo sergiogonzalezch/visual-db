@@ -1,4 +1,4 @@
-import { DisenoConReglas, Operacion, aplicarOperaciones, descripcionOperacion, invertirOperacion } from './operaciones'
+import { DisenoConReglas, Operacion, aplicarOperacion, aplicarOperaciones, descripcionOperacion, invertirOperacion } from './operaciones'
 
 export interface EntradaHistorial {
   id: string
@@ -41,8 +41,15 @@ export function editar(
   opciones: { etiqueta?: string; fuente?: EntradaHistorial['fuente']; propuestaId?: string | null } = {}
 ): ResultadoEdicion {
   if (operaciones.length === 0) throw new Error('No hay operaciones que aplicar')
-  const atras = operaciones.flatMap((op) => invertirOperacion(estado.diseno, estado.reglas, op)).reverse()
-  const estadoPosterior = aplicarOperaciones(estado, operaciones)
+  // Cada inversa necesita el estado inmediatamente anterior a su operación.
+  // Se invierte el orden de los grupos, nunca sus pasos internos de restauración.
+  let estadoPosterior = estado
+  let atras: Operacion[] = []
+  for (const op of operaciones) {
+    const inversas = invertirOperacion(estadoPosterior.diseno, estadoPosterior.reglas, op)
+    estadoPosterior = aplicarOperacion(estadoPosterior, op)
+    atras = [...inversas, ...atras]
+  }
   const entrada: EntradaHistorial = {
     id: idEntrada(),
     etiqueta: opciones.etiqueta ?? operaciones.map(descripcionOperacion).join('; '),

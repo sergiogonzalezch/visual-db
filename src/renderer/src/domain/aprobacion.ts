@@ -7,6 +7,7 @@ import {
   comprobarPropuesta
 } from './propuestas'
 import { validarProyecto } from './validacion'
+import { evaluarPropuestaIA } from './evaluacion-ia'
 
 export interface ResultadoAplicacion {
   ok: boolean
@@ -18,7 +19,8 @@ export interface ResultadoAplicacion {
 export function aplicarPropuesta(
   proyecto: Proyecto,
   historial: Historial,
-  propuesta: Propuesta
+  propuesta: Propuesta,
+  riesgosRevisados = false
 ): ResultadoAplicacion {
   const comprobacion = comprobarPropuesta(proyecto, propuesta)
   if (!comprobacion.aplicable) {
@@ -28,6 +30,12 @@ export function aplicarPropuesta(
       historial,
       motivos: comprobacion.motivos
     }
+  }
+
+  const evaluacion = evaluarPropuestaIA(proyecto, propuesta)
+  if (evaluacion.bloqueos.length || (evaluacion.requiereConfirmacion && !riesgosRevisados)) {
+    return { ok: false, proyecto, historial, motivos: evaluacion.bloqueos.length
+      ? evaluacion.bloqueos : ['Revisa y confirma los puntos semánticos de la propuesta antes de aceptar cambios.'] }
   }
 
   if (!propuesta.operaciones.length) {
@@ -77,7 +85,8 @@ export function aplicarPropuesta(
   const ahora = new Date().toISOString()
   const propuestas = proyecto.propuestas.map((p) =>
     p.id === propuesta.id
-      ? { ...p, estado: 'aplicada' as const, decididaEn: ahora }
+      ? { ...p, estado: 'aplicada' as const, decididaEn: ahora,
+        ...(evaluacion.requiereConfirmacion ? { notaDecision: `Puntos revisados por el usuario: ${evaluacion.advertencias.join(' ')}` } : {}) }
       : p
   )
 

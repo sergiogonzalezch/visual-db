@@ -130,6 +130,7 @@ textarea {
 }
 
 .zona-lienzo > svg {
+  user-select: none;
   width: 100%;
   height: 100%;
   display: block;
@@ -877,6 +878,9 @@ summary:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
 .aviso-flotante.info { border-left: 4px solid var(--acento); }
 
 .editor-nombre-proyecto { display: flex; align-items: center; gap: var(--espacio-1); min-width: 0; }
+.zona-lienzo g[role="button"]:focus-visible { outline: 2px solid var(--acento); outline-offset: 5px; }
+.entidad-carta:focus-visible .cuerpo, .nota-carta:focus-visible > rect { stroke: var(--acento); stroke-width: 3; }
+.relacion-linea line.zona-impacto { stroke: transparent; stroke-width: 14; pointer-events: stroke; }
 .editor-nombre-proyecto .nombre-proyecto[readonly] { cursor: default; border-color: transparent; text-overflow: ellipsis; }
 .editor-nombre-proyecto.editando .nombre-proyecto { background: var(--entrada); border-color: var(--acento); }
 .editar-nombre-proyecto { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 30px; width: 30px; height: 30px; padding: 5px; color: var(--texto-suave); background: transparent; border-color: transparent; }

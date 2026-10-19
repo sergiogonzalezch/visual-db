@@ -1,5 +1,7 @@
 # Plan consolidado de mejoras: revisión con IA y UX
 
+> Informe histórico del 18 de octubre. Consulta los [pendientes vigentes](../../pendientes.md) y las [correcciones y pruebas del 19 de octubre](../2026-10-19/correcciones-contrato-y-pruebas.md); este documento conserva sus resultados originales.
+
 Fecha: 18 de octubre de 2026. Estado: correcciones autorizadas e implementadas en el ciclo posterior. Consulta `informe-correcciones-revision.md` para resultados y verificaciones aún pendientes; la matriz original se conserva como referencia de alcance.
 
 ## Objetivo y fuentes

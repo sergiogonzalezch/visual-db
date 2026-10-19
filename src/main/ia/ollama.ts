@@ -1,4 +1,5 @@
 import { solicitar } from './http'
+import { ESQUEMA_REVISION } from './contrato-revision'
 import {
   BorradorImportacionIA,
   CapacidadesProveedor,
@@ -41,7 +42,8 @@ async function chatOllama(
     messages: mensajesFinal,
     stream: false
   }
-  if (opciones.formatoJson) cuerpo.format = 'json'
+  if (opciones.formatoJson) cuerpo.format = opciones.operacion === 'revision' ? ESQUEMA_REVISION : 'json'
+  if (opciones.operacion === 'revision') cuerpo.options = { num_ctx: 8192, temperature: 0.2 }
   const respuesta = await solicitar(`${urlBase(config)}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

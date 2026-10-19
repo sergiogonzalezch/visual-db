@@ -1,4 +1,5 @@
 import { solicitar } from './http'
+import { ESQUEMA_REVISION } from './contrato-revision'
 import {
   BorradorImportacionIA,
   CapacidadesProveedor,
@@ -46,9 +47,12 @@ async function chatCompletions(
   mensajes: MensajeProveedor[],
   opciones: { json: boolean; signal: AbortSignal; operacion: OperacionConsumo }
 ): Promise<string> {
+  const mensajesFinal = opciones.operacion === 'revision' && config.proveedor === 'gemini'
+    ? mensajes.map(m => m.role === 'system' ? { ...m, content: `${m.content}\nContrato JSON Schema de la respuesta (respeta tipos y enums; no lo copies como respuesta):\n${JSON.stringify(ESQUEMA_REVISION)}` } : m)
+    : mensajes
   const cuerpo: Record<string, unknown> = {
     model: modeloProveedor(config, config.modelo),
-    messages: mensajes,
+    messages: mensajesFinal,
     stream: false,
     temperature: 0.2
   }
@@ -81,7 +85,7 @@ async function chatCompletions(
       proveedor: config.proveedor,
       modelo: config.modelo,
       operacion: opciones.operacion,
-      entrada: estimarTokens(JSON.stringify(mensajes)),
+      entrada: estimarTokens(JSON.stringify(mensajesFinal)),
       salida: estimarTokens(contenido),
       estimado: true
     })
@@ -113,7 +117,7 @@ export const adaptadorOpenAI: AdaptadorProveedor = {
       return {
         ok: coincide,
         detalle: coincide
-          ? config.modelo ? `Conectado. El modelo «${config.modelo}» está disponible. La capacidad de visión no es verificable automáticamente.` : 'Conectado al catálogo. Selecciona un modelo para generar respuestas.'
+          ? config.modelo ? `Conectado al catálogo. El modelo «${config.modelo}» figura en la lista; su disponibilidad de generación se comprueba al usarlo. La capacidad de visión no es verificable automáticamente.` : 'Conectado al catálogo. Selecciona un modelo; su disponibilidad de generación se comprueba al usarlo.'
           : `Conectado, pero el modelo «${config.modelo}» no figura en la lista del proveedor.`,
         capacidades: capacidadesPorDefecto({ estructurado: true, vision: 'no-verificable' }),
         modelos: [...new Set(modelos)].sort()

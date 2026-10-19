@@ -1,5 +1,7 @@
 # Plan de la función de exportación
 
+> Referencia de diseño/evolución. Estado al 19 de octubre: [índice documental](README.md), [pendientes priorizados](pendientes.md) y [pruebas finales](pruebas/2026-10-19/correcciones-contrato-y-pruebas.md). Los resultados fechados de este documento conservan su contexto.
+
 Fecha: 18 de octubre de 2026.
 
 Estado: etapas 1–5 implementadas; validación interactiva y apertura externa multiplataforma pendientes.

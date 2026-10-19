@@ -1,6 +1,10 @@
 # Resumen de la sesión y pendientes detallados
 
+> Informe histórico del 18 de octubre. Consulta los [pendientes vigentes](../../pendientes.md) y las [correcciones y pruebas del 19 de octubre](../2026-10-19/correcciones-contrato-y-pruebas.md); este documento conserva sus resultados originales.
+
 Fecha de corte: 18 de octubre de 2026. Este documento distingue correcciones implementadas, pruebas realizadas y verificaciones pendientes. Un pendiente de verificación no equivale a un fallo confirmado.
+
+**Actualización del 19 de octubre:** esta tabla es histórica. Consulta [el nuevo informe de pendientes](../2026-10-19/informe-pendientes.md) para las correcciones y pruebas posteriores. El commit del ciclo anterior ya se realizó (`bff8fba`); el push quedó a cargo del usuario.
 
 ## Tabla de resultados de la sesión
 

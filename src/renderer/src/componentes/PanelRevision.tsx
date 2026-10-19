@@ -1,7 +1,8 @@
 import { ComparacionPropuesta } from './ComparacionPropuesta'
-import { comprobarPropuesta } from '../domain/propuestas'
+import { comprobarPropuesta, type Propuesta } from '../domain/propuestas'
+import { evaluarPropuestaIA } from '../domain/evaluacion-ia'
 import { mensajeErrorVisible } from '../presentacion/errores'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTienda } from '../estado/tienda'
 import { Pestanas } from './Pestanas'
 import { EstadoNivel } from '../domain/normalizacion'
@@ -18,9 +19,11 @@ export function PanelRevision(): JSX.Element {
   const [propuestaAbierta, setPropuestaAbierta] = useState<string | null>(null)
   const [discusion, setDiscusion] = useState('')
   const [filtro, setFiltro] = useState('todos')
+  const [revisionConfirmada, setRevisionConfirmada] = useState<{ propuesta: Propuesta; versionDiseno: number } | null>(null)
 
   const ambiguidadesPendientes = proyecto.revision.ambiguidades.filter((a) => !a.resolucion)
   const propuestas = proyecto.propuestas
+  const evaluaciones = useMemo(() => new Map(proyecto.propuestas.map(p => [p.id, evaluarPropuestaIA(proyecto, p)])), [proyecto])
 
   return (
     <div>
@@ -184,6 +187,8 @@ export function PanelRevision(): JSX.Element {
       {propuestas.filter(p => filtro === 'todos' || p.estado === filtro).map((propuesta) => {
         const abierta = propuestaAbierta === propuesta.id
         const comprobacion = comprobarPropuesta(proyecto, propuesta)
+        const evaluacion = evaluaciones.get(propuesta.id)!
+        const riesgosRevisados = revisionConfirmada?.propuesta === propuesta && revisionConfirmada?.versionDiseno === proyecto.versionDiseno
         const ejecutable = propuesta.operaciones.length > 0
         const comparable = ejecutable && propuesta.estado === 'pendiente' && comprobacion.aplicable
         return (
@@ -224,8 +229,8 @@ export function PanelRevision(): JSX.Element {
                   </button>
                   <button
                     className="primario"
-                    disabled={propuesta.estado !== 'pendiente' || !comprobacion.aplicable}
-                    onClick={() => tienda.aceptarPropuesta(propuesta.id)}
+                    disabled={propuesta.estado !== 'pendiente' || !comprobacion.aplicable || evaluacion.bloqueos.length > 0 || (evaluacion.requiereConfirmacion && !riesgosRevisados)}
+                    onClick={() => tienda.aceptarPropuesta(propuesta.id, riesgosRevisados)}
                   >
                     {ejecutable ? 'Aceptar cambios' : 'Marcar como revisada'}
                   </button>
@@ -237,7 +242,10 @@ export function PanelRevision(): JSX.Element {
                     Rechazar
                   </button>
                 </div>
+                {!!evaluacion.bloqueos.length && <div className="estado-contextual error" role="alert"><strong>Referencias por corregir</strong><ul>{evaluacion.bloqueos.map(m => <li key={m}>{m}</li>)}</ul></div>}
+                {!!evaluacion.advertencias.length && <div className="estado-contextual"><strong>Revisión semántica pendiente</strong><ul>{evaluacion.advertencias.map(m => <li key={m}>{m}</li>)}</ul>{evaluacion.requiereConfirmacion && propuesta.estado === 'pendiente' && <label><input type="checkbox" checked={riesgosRevisados} onChange={e => setRevisionConfirmada(e.target.checked ? { propuesta, versionDiseno: proyecto.versionDiseno } : null)} /> Revisé estos puntos y confirmo que los cambios corresponden a las reglas de mi proyecto.</label>}</div>}
                 <div className="explicacion">{propuesta.explicacion}</div>
+                {propuesta.notaDecision && <p className="descripcion-panel"><strong>Decisión registrada:</strong> {propuesta.notaDecision}</p>}
                 {comparable && <ComparacionPropuesta proyecto={proyecto} propuesta={propuesta} />}
                 {(propuesta.estado === 'pendiente' || propuesta.estado === 'desactualizada') && !comprobacion.aplicable && <div className="estado-contextual error" role="status"><strong>No se puede aplicar</strong><ul>{comprobacion.motivos.map((m, i) => <li key={i}>{m}</li>)}</ul></div>}
                 {!ejecutable && <p className="estado-contextual">Esta aclaración no modifica el diseño. Discútela o márcala como revisada.</p>}

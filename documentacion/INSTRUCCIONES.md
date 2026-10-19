@@ -28,6 +28,7 @@ Si la descarga inicial de Electron no terminó, puedes repetir su instalador con
 | `npm run dev` | Electron con recarga de desarrollo del renderer. |
 | `npm start` | Abre la vista previa mediante electron-vite preview. |
 | `npm test` | Pruebas de dominio, importación, exportación, persistencia, IA y presentación. |
+| `npm run test:e2e` | Compila y ejecuta Electron con perfil aislado, servidor de IA controlado y destinos de diálogos automatizados. |
 | `npm run typecheck` | Tipado de main/preload, renderer y pruebas de integración. |
 | `npm run build` | Compila a `out/`. |
 | `npm run pack` | Empaqueta sin instalador. |
@@ -146,7 +147,7 @@ Lee explicación, fundamento, supuestos, preguntas, resultado y contrapartidas. 
 
 1. En Revisión → Propuestas, abre una tarjeta y consulta el desglose **Actual → Propuesto**, incluso si el cambio solo afecta reglas.
 2. Pulsa **Ver antes/después** para mostrar el borrador en el lienzo. El inspector usa los valores propuestos y es de solo lectura. Vuelve a Actual para editar.
-3. **Aceptar cambios** comprueba afectados y dependencias y aplica el grupo de forma atómica. Si hay conflictos reales, muestra el motivo y bloquea la acción. No fuerces propuestas desactualizadas.
+3. **Aceptar cambios** comprueba afectados y dependencias y aplica el grupo de forma atómica. Las propuestas nuevas de IA que cambian restricciones, claves, reglas o incluyen supuestos exigen revisar y confirmar sus puntos semánticos; la decisión queda registrada. Si hay conflictos reales, muestra el motivo y bloquea la acción. No fuerces propuestas desactualizadas.
 4. Tras aplicar, la vista vuelve a Actual. No se ofrece una comparación histórica de esa propuesta aplicada.
 5. **Rechazar** conserva el diseño. **Discutir en el chat** no aprueba la propuesta.
 6. Una aclaración sin operaciones ofrece **Marcar como revisada**: no modifica diseño, versión ni historial, ni confirma sus supuestos de negocio.
@@ -224,7 +225,8 @@ El menú nativo usa CmdOrCtrl: en macOS se esperan los equivalentes con Cmd, pen
 | Conecta, pero no genera | Acceso de la cuenta a ese modelo; volver a seleccionar uno disponible. |
 | Error de autenticación | Credencial, proveedor y permisos; no revelar la clave en capturas o logs. |
 | 404 | Ruta base y disponibilidad del modelo; conectar al catálogo no garantiza generación. |
-| 429 / 503 | Límite de tasa o disponibilidad; evitar reintentar repetidamente sin revisar el estado. |
+| 429 | Límite de tasa: respetar el tiempo de espera; no repetir peticiones continuamente. |
+| 503 | Modelo temporalmente indisponible o saturado; el catálogo puede seguir accesible. Reintentar más tarde o elegir otro modelo, sin sustituir la clave por este error. |
 | Timeout | Complejidad del caso, modelo y servicio. El timeout no demuestra una clave inválida. |
 | No puedo editar | Comprueba si estás en Propuesto o si el nombre necesita el lápiz. |
 | Propuesta desactualizada | Leer motivos y pedir otra revisión; no omitir la comprobación de huellas. |
@@ -250,7 +252,7 @@ El menú nativo usa CmdOrCtrl: en macOS se esperan los equivalentes con Cmd, pen
 
 Antes de entregar cambios: `npm test`, `npm run typecheck` y `npm run build`.
 
-La regresión registrada aprobó **99 pruebas deterministas en 22 archivos**, con un ensayo real de Ollama omitido en la ejecución normal. Ese ensayo se ejecutó por separado y pasó con Mistral y un caso reducido. Son resultados de esa sesión; no se han repetido por actualizar estos textos.
+La regresión del **19 de octubre** aprobó **176 pruebas deterministas en 29 archivos**. Cuatro casos optativos se omiten por defecto: tres de rendimiento y uno de Ollama real. Se ejecutaron por separado y pasaron; el ensayo de Ollama verifica un caso reducido, no certifica calidad conceptual ni la tienda completa.
 
 Para repetir el ensayo local de forma explícita en PowerShell:
 
@@ -260,8 +262,32 @@ node node_modules/vitest/vitest.mjs run tests/integracion/ollama-real.test.ts
 Remove-Item Env:VISUAL_BD_QA_LOCAL
 ```
 
-Requiere Ollama en el puerto y modelo indicados en el ensayo; efectúa una llamada real y escribe `ollama-revision-real.json` en `artefactos-locales/pruebas/<fecha-local>/`, ignorada por Git. Las pruebas normales de transporte/proveedores usan simulaciones. La integración dominio/disco no es un E2E completo de UI.
+Requiere Ollama en el puerto y modelo indicados en el ensayo; efectúa una llamada real y escribe `ollama-revision-real.json` en `artefactos-locales/pruebas/<fecha-local>/`, ignorada por Git. Las pruebas normales de transporte/proveedores usan simulaciones. `npm run test:e2e` atraviesa renderer/preload/IPC y disco con proveedor controlado, sin modificar el perfil personal ni consumir cuota externa. Los diálogos nativos reciben rutas automatizadas; no se certifica su interacción manual mediante este arnés.
 
-Consulta [el informe de correcciones](pruebas/2026-10-18/informe-correcciones-revision.md) y [los pendientes detallados](pruebas/2026-10-18/resumen-sesion-y-pendientes.md). Siguen pendientes verificaciones de concurrencia por IPC/UI, operaciones combinadas, revisión completa local/remota, accesibilidad y tema claro de la app, diagramas grandes, herramientas externas y macOS/Linux.
+Consulta [el informe actualizado de pendientes](pruebas/2026-10-19/informe-pendientes.md) para reproducir el E2E y las métricas. Concurrencia, operaciones, errores, temas y encuadre tienen nueva cobertura. Los recorridos reales de revisión, decisión, guardado y reapertura pasaron con Mistral y Flash Lite. Siguen pendientes una modificación correcta de negocio generada y aprobada con cada proveedor, y la disponibilidad del modelo Gemini que respondió 503. Los [controles y pruebas de los puntos 7, 8, 9 y 11](pruebas/2026-10-19/cierre-7-8-9-11.md) cierran su alcance básico; certificación de lectores y sesiones de varias horas son ampliaciones. El intercambio externo y macOS/Linux quedaron excluidos de este ciclo.
 
 No hay comparación histórica de propuestas aplicadas, ejecución SQL/DDL, generación ORM/NoSQL ni instaladores publicados. El icono de la app es el concepto C; sus recursos y procedencia están en [resources/README.md](../resources/README.md).
+
+
+### Contrato actual de revisiones y pruebas reales
+
+Las operaciones son objetos JSON con `op`; no se convierten cadenas de pseudocódigo en operaciones. Ollama recibe el esquema completo para revisión, contexto 8192 y temperatura 0,2. Ese contexto puede requerir más memoria. Gemini conserva `json_object` y recibe el contrato como instrucción; esto aumenta los tokens de entrada. Un experimento con el parámetro de esquema devolvió 500 y se retiró. Las revisiones no alteran automáticamente reglas ni configuración.
+
+Para un recorrido real por interfaz, compila y configura explícitamente el proveedor de QA en PowerShell:
+
+```powershell
+npm run build
+$env:VISUAL_BD_QA_PROVEEDOR='ollama'
+$env:VISUAL_BD_QA_MODELO='mistral:latest'
+node tests/e2e/ejecutar.cjs
+Remove-Item Env:VISUAL_BD_QA_PROVEEDOR
+Remove-Item Env:VISUAL_BD_QA_MODELO
+```
+
+Para Gemini, usa `VISUAL_BD_QA_PROVEEDOR='gemini'` y, opcionalmente, `VISUAL_BD_QA_MODELO='gemini-2.5-flash-lite'`. Sin override usa el modelo personal. El arnés real de Gemini lee el perfil Windows `Visual BD` y descifra su credencial solo en memoria, trabajando con un perfil aislado. No cambia la selección personal. Las llamadas reales pueden consumir cuota y dependen del servicio; no son pruebas deterministas.
+
+El arnés real marca una aclaración o comprueba comparación/bloqueo por riesgos y rechaza una propuesta; nunca confirma automáticamente restricciones de negocio para pasar una prueba. La aprobación y deshacer/rehacer se verifican con propuestas conocidas del servidor controlado. Un resultado aprobado del arnés real no certifica una aprobación de cambios generados por el modelo.
+
+`node tests/e2e/diagnostico-proveedores.cjs` compara el caso mínimo y la tienda de `tests/fixtures/tienda-prueba.md`. Requiere proveedores disponibles y puede consumir cuota. `QA_SOLO_SONDA=1` limita la ejecución a sondas Gemini; `QA_SOLO_LITE=1` prueba las dos revisiones de Flash Lite. Define y retira esas variables en el entorno del proceso igual que las anteriores; no guardan una preferencia de la aplicación. Las evidencias quedan ignoradas en `artefactos-locales/pruebas/diagnostico-<marca>/`.
+
+Consulta el [índice documental](README.md), los [pendientes vigentes](pendientes.md) y las [correcciones con evidencia final](pruebas/2026-10-19/correcciones-contrato-y-pruebas.md). Los informes fechados conservan resultados históricos.

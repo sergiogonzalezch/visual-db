@@ -28,6 +28,8 @@ describe('modelos Gemini', () => {
     await adaptadorOpenAI.revisar({ proyecto: {}, historialResumen: '' }, { ...config, modelo }, 'prueba', AbortSignal.timeout(1000))
     expect(fetch.mock.calls[0][0]).toBe(config.endpoint + '/chat/completions')
     expect(JSON.parse(fetch.mock.calls[0][1].body).model).toBe('gemini-2.5-flash')
+    expect(JSON.parse(fetch.mock.calls[0][1].body).response_format).toEqual({ type: 'json_object' })
+    expect(JSON.parse(fetch.mock.calls[0][1].body).messages[0].content).toContain('Contrato JSON Schema')
   })
   it('conserva los identificadores de OpenRouter', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: '{"resumen":"ok","propuestas":[]}' } }] })))

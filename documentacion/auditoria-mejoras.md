@@ -1,5 +1,7 @@
 # Auditoría: proveedores, persistencia e interfaz
 
+> Referencia de diseño/evolución. Estado al 19 de octubre: [índice documental](README.md), [pendientes priorizados](pendientes.md) y [pruebas finales](pruebas/2026-10-19/correcciones-contrato-y-pruebas.md). Los resultados fechados de este documento conservan su contexto.
+
 ## Actualización del 18 de octubre de 2026: interfaz Foco y chat por proyecto
 
 - Herramientas verticales flotantes: asa de arrastre, movimiento con flechas y Shift, límites del lienzo y restablecimiento de posición.

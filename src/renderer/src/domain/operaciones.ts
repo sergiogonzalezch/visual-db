@@ -12,12 +12,12 @@ import {
 } from './modelo'
 
 export type Operacion =
-  | { op: 'addEntidad'; entidad: Entidad }
+  | { op: 'addEntidad'; entidad: Entidad; indice?: number }
   | { op: 'updateEntidad'; id: string; parche: Partial<Pick<Entidad, 'nombre' | 'descripcion'>> }
   | { op: 'moverEntidad'; id: string; x: number; y: number }
   | { op: 'redimensionarEntidad'; id: string; ancho: number; alto: number }
   | { op: 'removeEntidad'; id: string }
-  | { op: 'addAtributo'; entidadId: string; atributo: Atributo }
+  | { op: 'addAtributo'; entidadId: string; atributo: Atributo; indice?: number }
   | {
       op: 'updateAtributo'
       entidadId: string
@@ -25,7 +25,7 @@ export type Operacion =
       parche: Partial<Omit<Atributo, 'id'>>
     }
   | { op: 'removeAtributo'; entidadId: string; id: string }
-  | { op: 'addClave'; entidadId: string; clave: Clave }
+  | { op: 'addClave'; entidadId: string; clave: Clave; indice?: number }
   | { op: 'updateClave'; entidadId: string; id: string; parche: Partial<Omit<Clave, 'id'>> }
   | { op: 'removeClave'; entidadId: string; id: string }
   | { op: 'addRelacion'; relacion: Relacion }
@@ -67,13 +67,40 @@ function exigirRelacion(diseno: Diseno, id: string): Relacion {
   return relacion
 }
 
+function insertarUnico<T extends { id: string }>(lista: T[], elemento: T, indice = lista.length): void {
+  if (lista.some(e => e.id === elemento.id)) throw new Error(`Ya existe un elemento con el identificador ${elemento.id}.`)
+  lista.splice(indice, 0, structuredClone(elemento))
+}
+
+// Las FK referencian claves, no atributos sueltos. Al desaparecer el destino
+// se elimina la restricción afectada, conservando siempre sus columnas.
+function foraneasDependientes(diseno: Diseno, entidadId: string, claves?: string[]): { entidadId: string; clave: Clave }[] {
+  return diseno.entidades.flatMap(e => e.claves
+    .filter(c => c.foranea?.entidadDestinoId === entidadId &&
+      (!claves || c.foranea.claveDestinoIds.some(id => claves.includes(id))))
+    .map(clave => ({ entidadId: e.id, clave })))
+}
+
+function quitarForaneas(diseno: Diseno, afectadas: { entidadId: string; clave: Clave }[]): void {
+  for (const { entidadId, clave } of afectadas) {
+    const entidad = exigirEntidad(diseno, entidadId)
+    entidad.claves = entidad.claves.filter(c => c.id !== clave.id)
+  }
+}
+
+function restaurarForaneas(diseno: Diseno, entidadId: string, claves?: string[]): Operacion[] {
+  return foraneasDependientes(diseno, entidadId, claves).map(a => ({
+    op: 'addClave', entidadId: a.entidadId, clave: structuredClone(a.clave), indice: exigirEntidad(diseno, a.entidadId).claves.indexOf(a.clave)
+  }))
+}
+
 export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion): DisenoConReglas {
   const diseno = clonarDiseno(estado.diseno)
   const reglas = structuredClone(estado.reglas)
 
   switch (operacion.op) {
     case 'addEntidad': {
-      diseno.entidades.push(structuredClone(operacion.entidad))
+      insertarUnico(diseno.entidades, operacion.entidad, operacion.indice)
       break
     }
     case 'updateEntidad': {
@@ -95,6 +122,7 @@ export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion):
     }
     case 'removeEntidad': {
       exigirEntidad(diseno, operacion.id)
+      quitarForaneas(diseno, foraneasDependientes(diseno, operacion.id).filter(a => a.entidadId !== operacion.id))
       diseno.entidades = diseno.entidades.filter((e) => e.id !== operacion.id)
       diseno.relaciones = diseno.relaciones.filter(
         (r) => r.inicio.entidadId !== operacion.id && r.fin.entidadId !== operacion.id
@@ -105,7 +133,8 @@ export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion):
       break
     }
     case 'addAtributo': {
-      exigirEntidad(diseno, operacion.entidadId).atributos.push(structuredClone(operacion.atributo))
+      const atributos = exigirEntidad(diseno, operacion.entidadId).atributos
+      insertarUnico(atributos, operacion.atributo, operacion.indice)
       break
     }
     case 'updateAtributo': {
@@ -117,6 +146,10 @@ export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion):
     }
     case 'removeAtributo': {
       const entidad = exigirEntidad(diseno, operacion.entidadId)
+      if (!entidad.atributos.some(a => a.id === operacion.id)) throw new Error(`Atributo no encontrado: ${operacion.id}`)
+      const clavesAfectadas = entidad.claves.filter(c => c.atributoIds.includes(operacion.id)).map(c => c.id)
+      quitarForaneas(diseno, foraneasDependientes(diseno, entidad.id, clavesAfectadas))
+      entidad.claves = entidad.claves.filter(c => !(c.tipo === 'foranea' && c.atributoIds.includes(operacion.id)))
       entidad.atributos = entidad.atributos.filter((a) => a.id !== operacion.id)
       for (const clave of entidad.claves) {
         clave.atributoIds = clave.atributoIds.filter((id) => id !== operacion.id)
@@ -134,7 +167,8 @@ export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion):
       break
     }
     case 'addClave': {
-      exigirEntidad(diseno, operacion.entidadId).claves.push(structuredClone(operacion.clave))
+      const claves = exigirEntidad(diseno, operacion.entidadId).claves
+      insertarUnico(claves, operacion.clave, operacion.indice)
       break
     }
     case 'updateClave': {
@@ -146,13 +180,15 @@ export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion):
     }
     case 'removeClave': {
       const entidad = exigirEntidad(diseno, operacion.entidadId)
+      if (!entidad.claves.some(c => c.id === operacion.id)) throw new Error(`Clave no encontrada: ${operacion.id}`)
+      quitarForaneas(diseno, foraneasDependientes(diseno, entidad.id, [operacion.id]))
       entidad.claves = entidad.claves.filter((c) => c.id !== operacion.id)
       break
     }
     case 'addRelacion': {
       exigirEntidad(diseno, operacion.relacion.inicio.entidadId)
       exigirEntidad(diseno, operacion.relacion.fin.entidadId)
-      diseno.relaciones.push(structuredClone(operacion.relacion))
+      insertarUnico(diseno.relaciones, operacion.relacion)
       break
     }
     case 'updateRelacion': {
@@ -174,7 +210,7 @@ export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion):
       break
     }
     case 'addAtributoRelacion': {
-      exigirRelacion(diseno, operacion.relacionId).atributos.push(structuredClone(operacion.atributo))
+      insertarUnico(exigirRelacion(diseno, operacion.relacionId).atributos, operacion.atributo)
       break
     }
     case 'updateAtributoRelacion': {
@@ -186,11 +222,12 @@ export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion):
     }
     case 'removeAtributoRelacion': {
       const relacion = exigirRelacion(diseno, operacion.relacionId)
+      if (!relacion.atributos.some(a => a.id === operacion.id)) throw new Error(`Atributo de relación no encontrado: ${operacion.id}`)
       relacion.atributos = relacion.atributos.filter((a) => a.id !== operacion.id)
       break
     }
     case 'addNota': {
-      diseno.notas.push(structuredClone(operacion.nota))
+      insertarUnico(diseno.notas, operacion.nota)
       break
     }
     case 'updateNota': {
@@ -200,11 +237,12 @@ export function aplicarOperacion(estado: DisenoConReglas, operacion: Operacion):
       break
     }
     case 'removeNota': {
+      if (!diseno.notas.some(n => n.id === operacion.id)) throw new Error(`Nota no encontrada: ${operacion.id}`)
       diseno.notas = diseno.notas.filter((n) => n.id !== operacion.id)
       break
     }
     case 'addRegla': {
-      reglas.push(structuredClone(operacion.regla))
+      insertarUnico(reglas, operacion.regla)
       break
     }
     case 'updateRegla': {
@@ -267,9 +305,10 @@ export function invertirOperacion(diseno: Diseno, reglas: ReglaNegocio[], operac
       )
       const reglasAfectadas = reglas.filter((r) => r.dependencia?.entidadId === operacion.id)
       return [
-        { op: 'addEntidad', entidad: structuredClone(entidad) },
+        { op: 'addEntidad', entidad: structuredClone(entidad), indice: diseno.entidades.indexOf(entidad) },
         ...relacionesAfectadas.map((r) => ({ op: 'addRelacion' as const, relacion: structuredClone(r) })),
-        ...reglasAfectadas.map((r) => ({ op: 'addRegla' as const, regla: structuredClone(r) }))
+        ...reglasAfectadas.map((r) => ({ op: 'addRegla' as const, regla: structuredClone(r) })),
+        ...restaurarForaneas(diseno, operacion.id).filter(op => 'entidadId' in op && op.entidadId !== operacion.id)
       ]
     }
     case 'addAtributo':
@@ -285,17 +324,17 @@ export function invertirOperacion(diseno: Diseno, reglas: ReglaNegocio[], operac
       const entidad = hallarEntidad(diseno, operacion.entidadId)
       const atributo = entidad?.atributos.find((a) => a.id === operacion.id)
       if (!entidad || !atributo) return []
-      const sobreviven = entidad.claves.filter((c) =>
-        c.atributoIds.some((id) => id !== operacion.id)
+      const foraneas = foraneasDependientes(diseno, entidad.id, entidad.claves.filter(c => c.atributoIds.includes(operacion.id)).map(c => c.id))
+      const clavesRestantes = entidad.claves.filter(c => !foraneas.some(a => a.entidadId === entidad.id && a.clave.id === c.id))
+      const eliminadas = clavesRestantes.filter((c) =>
+        c.atributoIds.every((id) => id === operacion.id) || (c.tipo === 'foranea' && c.atributoIds.includes(operacion.id))
       )
-      const eliminadas = entidad.claves.filter((c) =>
-        c.atributoIds.every((id) => id === operacion.id)
-      )
+      const sobreviven = clavesRestantes.filter(c => !eliminadas.includes(c))
       const reglasPre = reglas
         .filter((r) => r.dependencia?.entidadId === entidad.id)
         .map((r) => structuredClone(r))
       return [
-        { op: 'addAtributo', entidadId: operacion.entidadId, atributo: structuredClone(atributo) },
+        { op: 'addAtributo', entidadId: operacion.entidadId, atributo: structuredClone(atributo), indice: entidad.atributos.indexOf(atributo) },
         ...sobreviven.map((clave) => ({
           op: 'updateClave' as const,
           entidadId: operacion.entidadId,
@@ -305,7 +344,7 @@ export function invertirOperacion(diseno: Diseno, reglas: ReglaNegocio[], operac
         ...eliminadas.map((clave) => ({
           op: 'addClave' as const,
           entidadId: operacion.entidadId,
-          clave: structuredClone(clave)
+          clave: structuredClone(clave), indice: entidad.claves.indexOf(clave)
         })),
         ...reglasPre.map((regla) => ({
           op: 'updateRegla' as const,
@@ -313,7 +352,8 @@ export function invertirOperacion(diseno: Diseno, reglas: ReglaNegocio[], operac
           parche: {
             dependencia: regla.dependencia ? structuredClone(regla.dependencia) : null
           }
-        }))
+        })),
+        ...foraneas.map(a => ({ op: 'addClave' as const, entidadId: a.entidadId, clave: structuredClone(a.clave), indice: exigirEntidad(diseno, a.entidadId).claves.indexOf(a.clave) }))
       ]
     }
     case 'addClave':
@@ -329,7 +369,10 @@ export function invertirOperacion(diseno: Diseno, reglas: ReglaNegocio[], operac
       const entidad = hallarEntidad(diseno, operacion.entidadId)
       const clave = entidad?.claves.find((c) => c.id === operacion.id)
       if (!entidad || !clave) return []
-      return [{ op: 'addClave', entidadId: operacion.entidadId, clave: structuredClone(clave) }]
+      return [
+        { op: 'addClave', entidadId: operacion.entidadId, clave: structuredClone(clave), indice: entidad.claves.indexOf(clave) },
+        ...restaurarForaneas(diseno, entidad.id, [clave.id]).filter(op => 'clave' in op && !(op.entidadId === entidad.id && op.clave.id === clave.id))
+      ]
     }
     case 'addRelacion':
       return [{ op: 'removeRelacion', id: operacion.relacion.id }]

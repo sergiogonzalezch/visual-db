@@ -1,3 +1,4 @@
+import { EJEMPLOS_OPERACIONES, OPERACIONES_REVISION } from './contrato-revision'
 import {
   BorradorImportacionIA,
   CapacidadesProveedor,
@@ -68,17 +69,27 @@ export const SISTEMA_REVISION = `Eres un asistente de revisión de modelos de ba
 Recibirás el modelo lógico actual (entidades, atributos, claves, relaciones, reglas de negocio, dependencias funcionales declaradas e información desconocida).
 Devolverás ÚNICAMENTE JSON válido con esta forma:
 {"resumen": string, "propuestas": [{"titulo": string, "categoria": "normalizacion"|"integridad"|"modelado"|"ambiguedad"|"otro", "prioridad": "alta"|"media"|"baja", "explicacion": string, "fundamento": string, "supuestos": string[], "preguntas": string[], "operaciones": [], "resultado": string, "contrapartidas": string[], "dependeDe": string[]}]}
-Las operaciones pertenecen a un catálogo cerrado; usa exactamente estos op:
-addEntidad{entidad}, updateEntidad{id,parche{nombre,descripcion}}, moverEntidad{id,x,y}, removeEntidad{id},
-addAtributo{entidadId,atributo}, updateAtributo{entidadId,id,parche{nombre,descripcion,tipoDato,nulable,unico,multivalorado}}, removeAtributo{entidadId,id},
-addClave{entidadId,clave{id,nombre,tipo:"primaria"|"candidata"|"foranea",atributoIds,foranea}}, updateClave{entidadId,id,parche}, removeClave{entidadId,id},
-addRelacion{relacion{id,nombre,inicio:{entidadId,cardinalidad:{minimo:0|1|"desconocido",maximo:1|"n"|"desconocido"},participacion:"total"|"parcial"|"desconocido"},fin:{...},atributos:[]}},
-updateRelacion{id,parche{nombre,inicio,fin}}, removeRelacion{id}, addNota{nota{id,texto,x,y,ancho,alto}}, removeNota{id},
-addRegla{regla{id,tipo:"negocio"|"dependencia"|"supuesto",texto,dependencia:null|{entidadId,determinanteIds,dependientesIds},fragmentoOrigen}}, updateRegla{id,parche}, removeRegla{id}
+Cada elemento de operaciones debe ser un OBJETO JSON con discriminante "op", nunca una cadena, pseudocódigo ni una llamada a función.
+Catálogo cerrado de op: ${OPERACIONES_REVISION.join(', ')}.
+Ejemplos sintácticos válidos (sustituye los IDs por IDs reales del contexto; no son cambios que debas proponer):
+${JSON.stringify(EJEMPLOS_OPERACIONES)}
+Para updateEntidad usa id y parche con nombre/descripcion; moverEntidad usa id,x,y; redimensionarEntidad usa id,ancho,alto.
+Para updateAtributo/removeAtributo/updateClave/removeClave incluye entidadId e id. update usa parche con solo los campos a cambiar.
+Para addEntidad/addAtributo/addClave/addRelacion/addNota/addRegla incluye respectivamente entidad/atributo/clave/relacion/nota/regla como objeto completo de la misma forma que en el modelo recibido. addAtributo/addClave también requiere entidadId.
+Para atributos de relación incluye relacionId; addAtributoRelacion requiere atributo, updateAtributoRelacion requiere id y parche, removeAtributoRelacion requiere id.
+Las otras bajas usan id; updateRelacion/updateNota/updateRegla usan id y parche. No añadas campos ajenos a la operación.
+Los booleanos son true, false o "desconocido", nunca "verdadero" ni "falso". Los enums son exactamente los indicados, sin acentos añadidos.
+En cada extremo de relación: participacion solo admite "total", "parcial" o "desconocido" (nunca "obligatoria"/"opcional"); cardinalidad.minimo admite 0,1,"desconocido" y maximo admite 1,"n","desconocido". Conserva entidadId al actualizar un extremo completo.
+Las claves usan tipo "primaria", "candidata" o "foranea" y atributoIds como lista de IDs de atributos. foranea es null o un objeto con entidadDestinoId, claveDestinoIds (IDs de claves del destino) y relacionId (ID o null).
+Una pregunta sobre un tipo, obligatoriedad, unicidad o cardinalidad aún no confirmados debe llevar operaciones: []; no incluyas la restricción como cambio mientras la preguntas.
+Si falta evidencia, devuelve preguntas y operaciones: []. Es válido devolver {"resumen":"Información insuficiente", "propuestas":[]}.
+Sé conciso: prioriza hasta tres propuestas relevantes, sin repetir el esquema ni listar todas las operaciones disponibles.
 Usa ids nuevos con prefijos "nuevas-" cuando crees elementos; referencias a existentes deben usar sus ids reales.
 NO inventes información no observada: separa hechos de supuestos y deja preguntas cuando falte evidencia.
 No afirmes que una entidad cumple 3FN o BCNF sin dependencias y claves suficientes para demostrarlo; indica información insuficiente. No conviertas supuestos en restricciones obligatorias: si una regla no está confirmada, plantea una pregunta sin operaciones.
 Una aclaración sin cambios debe tener operaciones: []. Reutiliza únicamente IDs existentes o creados dentro de la misma propuesta y no dupliques reglas ya declaradas.
+dependeDe contiene solo IDs de propuestas existentes facilitadas explícitamente en el contexto, nunca IDs de reglas, entidades ni atributos. Si no recibes propuestas existentes, usa dependeDe: [].
+La unicidad no implica obligatoriedad. Un precio histórico de línea de pedido no debe sustituirse por el precio actual del producto si las reglas lo preservan. Respeta las reglas explícitas antes de formular preguntas que ya están contestadas.
 Nunca generes SQL, DDL ni código.`
 
 export const SISTEMA_CHAT = `Eres el asistente de un editor visual de modelos de bases de datos.
@@ -105,10 +116,26 @@ export function extraerJson(texto: string): string | null {
 export function normalizarRevision(texto: string): RespuestaRevisionIA {
   const json = extraerJson(texto)
   if (!json) throw new Error('La respuesta no contiene JSON de revisión.')
-  const datos = JSON.parse(json) as Partial<RespuestaRevisionIA>
+  let datos: Partial<RespuestaRevisionIA> | null
+  try { datos = JSON.parse(json) } catch { throw new Error('JSON de revisión inválido. El modelo devolvió un formato incompleto; reintenta o elige otro modelo.') }
+  if (!datos || typeof datos !== 'object' || !Array.isArray(datos.propuestas)) {
+    throw new Error('JSON inválido: falta la lista de propuestas de revisión.')
+  }
+  for (const p of datos.propuestas) {
+    if (!p || typeof p !== 'object' ||
+      !['titulo', 'explicacion', 'fundamento', 'resultado'].every(k => typeof p[k as keyof typeof p] === 'string') ||
+      !['supuestos', 'preguntas', 'contrapartidas', 'dependeDe'].every(k => {
+        const lista = p[k as keyof typeof p]
+        return Array.isArray(lista) && lista.every(v => typeof v === 'string')
+      }) || !Array.isArray(p.operaciones) ||
+      !['normalizacion', 'integridad', 'modelado', 'ambiguedad', 'otro'].includes(p.categoria) ||
+      !['alta', 'media', 'baja'].includes(p.prioridad)) {
+      throw new Error('JSON inválido: propuesta incompleta. No se incorporó la revisión; reintenta o elige otro modelo.')
+    }
+  }
   return {
     resumen: typeof datos.resumen === 'string' ? datos.resumen : '',
-    propuestas: Array.isArray(datos.propuestas) ? datos.propuestas : []
+    propuestas: datos.propuestas
   }
 }
 
