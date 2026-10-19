@@ -30,6 +30,14 @@ export function aplicarPropuesta(
     }
   }
 
+  if (!propuesta.operaciones.length) {
+    return { ok: true, historial, motivos: [], proyecto: {
+      ...proyecto, actualizadoEn: new Date().toISOString(),
+      propuestas: proyecto.propuestas.map(p => p.id === propuesta.id
+        ? { ...p, estado: 'aceptada' as const, decididaEn: new Date().toISOString(), notaDecision: 'Aclaración revisada; sin cambios en el diseño.' } : p)
+    } }
+  }
+
   let resultado
   try {
     resultado = editar(

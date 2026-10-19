@@ -53,6 +53,9 @@ export function validarProyecto(proyecto: Proyecto): HallazgoLocal[] {
       })
     }
 
+    if (entidad.claves.filter(c => c.tipo === 'primaria').length > 1) {
+      hallazgos.push({ id: idHallazgo('pk-multiple'), severidad: 'error', codigo: 'primarias-multiples', mensaje: `«${entidad.nombre}» tiene varias claves primarias`, explicacion: 'Una clave primaria compuesta debe ser una sola restricción con varios atributos. Revisa las claves importadas.', elementos: [{ tipo: 'entidad', id: entidad.id }] })
+    }
     for (const clave of entidad.claves) {
       for (const atributoId of clave.atributoIds) {
         if (!entidad.atributos.some((a) => a.id === atributoId)) {
@@ -70,6 +73,9 @@ export function validarProyecto(proyecto: Proyecto): HallazgoLocal[] {
         }
       }
       if (clave.tipo === 'foranea') {
+        if (!clave.atributoIds.length || !clave.foranea?.claveDestinoIds.length) {
+          hallazgos.push({ id: idHallazgo('fk-incompleta'), severidad: 'error', codigo: 'foranea-incompleta', mensaje: `La clave foránea de «${entidad.nombre}» está incompleta`, explicacion: 'Selecciona las columnas origen y una clave destino antes de usar esta restricción.', elementos: [{ tipo: 'clave', id: clave.id }] })
+        }
         if (!clave.foranea) {
           hallazgos.push({
             id: idHallazgo('fk-sin-destino'),

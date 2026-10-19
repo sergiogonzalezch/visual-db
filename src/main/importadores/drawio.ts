@@ -40,7 +40,7 @@ export function extraerPaginas(xml: string): { nombre: string; contenido: string
       const comprimido = !/compressed="false"/.test(atributos)
       paginas.push({
         nombre,
-        contenido: comprimido ? descomprimirDrawio(cuerpo) : desescaparXml(cuerpo)
+        contenido: /^<mxGraphModel[\s>]/.test(cuerpo) ? cuerpo : comprimido ? descomprimirDrawio(cuerpo) : desescaparXml(cuerpo)
       })
     })
     if (paginas.length > 0) return paginas
@@ -87,7 +87,7 @@ function parsearEstilo(estilo: string | undefined): Record<string, string | bool
 
 function textoDeNodo(nodo: Record<string, unknown>): string {
   const valor = nodo.value ?? nodo['@_value'] ?? nodo['#text']
-  if (typeof valor === 'string') return valor.trim()
+  if (typeof valor === 'string') return valor.replace(/&#(?:10|x0*a);/gi, '\n').trim()
   if (Array.isArray(valor)) {
     return valor
       .map((v) => (typeof v === 'string' ? v : String((v as { '#text'?: string })?.['#text'] ?? '')))

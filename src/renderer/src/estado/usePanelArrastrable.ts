@@ -8,7 +8,16 @@ export function usePanelArrastrable() {
   const panel = useRef<HTMLDivElement>(null)
   const asa = useRef<HTMLButtonElement>(null)
   const arrastre = useRef<{ id: number; clientX: number; clientY: number; origen: PosicionPanel } | null>(null)
-  const [posicion, setPosicion] = useState(INICIAL)
+  const [posicion, setPosicion] = useState(() => {
+    try {
+      const guardada = JSON.parse(localStorage.getItem('visual-bd:herramientas') ?? 'null')
+      if (guardada && Number.isFinite(guardada.x) && Number.isFinite(guardada.y)) return guardada as PosicionPanel
+    } catch { /* La preferencia visual es opcional. */ }
+    return INICIAL
+  })
+  useEffect(() => {
+    try { localStorage.setItem('visual-bd:herramientas', JSON.stringify(posicion)) } catch { /* Sin almacenamiento: mantener la posición en memoria. */ }
+  }, [posicion])
   const [moviendo, setMoviendo] = useState(false)
   const mover = useCallback((destino: PosicionPanel) => {
     const nodo = panel.current, area = nodo?.parentElement

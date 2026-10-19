@@ -10,7 +10,10 @@ export default defineConfig({
   },
   test: {
     include: [
+      'tests/integracion/**/*.test.ts',
       'src/main/persistencia.test.ts',
+      'src/main/exportacion.test.ts',
+      'src/renderer/src/exportadores/**/*.test.ts',
       'src/renderer/src/domain/**/*.test.ts',
       'src/renderer/src/presentacion/**/*.test.ts',
       'src/renderer/src/importadores/**/*.test.ts',

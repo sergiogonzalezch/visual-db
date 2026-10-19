@@ -1,12 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DESCONOCIDO, Entidad, hallarEntidad } from '../domain/modelo'
-import { aplicarOperaciones } from '../domain/operaciones'
+import { proyectarPropuesta } from '../domain/comparacion'
 import { useTienda } from '../estado/tienda'
 
-interface Punto {
-  x: number
-  y: number
-}
+import { altoEntidad, anchoEntidad, interseccionBorde, etiquetaCardinalidad, type Punto } from '../presentacion/geometria'
 
 interface Arrastre {
   tipo: 'entidad' | 'paneo'
@@ -15,40 +12,6 @@ interface Arrastre {
   inicioMundo: Punto
   posicionInicial?: Punto
   movido: boolean
-}
-
-function altoEntidad(entidad: Entidad): number {
-  return 30 + Math.max(entidad.atributos.length, 1) * 15 + 10
-}
-
-function anchoEntidad(entidad: Entidad): number {
-  const porNombre = entidad.nombre.length * 7.5 + 40
-  const porAtributo = entidad.atributos.reduce((max, a) => Math.max(max, a.nombre.length * 6.8 + 70), 0)
-  return Math.max(180, porNombre, porAtributo)
-}
-
-function interseccionBorde(entidad: Entidad, hacia: Punto): Punto {
-  const ancho = anchoEntidad(entidad)
-  const alto = altoEntidad(entidad)
-  const cx = entidad.x + ancho / 2
-  const cy = entidad.y + alto / 2
-  const dx = hacia.x - cx
-  const dy = hacia.y - cy
-  if (dx === 0 && dy === 0) return { x: cx, y: cy }
-  const escalaX = dx === 0 ? Infinity : ancho / 2 / Math.abs(dx)
-  const escalaY = dy === 0 ? Infinity : alto / 2 / Math.abs(dy)
-  const escala = Math.min(escalaX, escalaY)
-  return { x: cx + dx * escala, y: cy + dy * escala }
-}
-
-function etiquetaCardinalidad(min: unknown, max: unknown): string {
-  if (min === DESCONOCIDO || max === DESCONOCIDO) return '?'
-  const parteMin = String(min)
-  const parteMax = String(max)
-  if (parteMin === '1' && parteMax === '1') return '1'
-  if (parteMin === '0' && parteMax === '1') return '0..1'
-  if (parteMax === 'n') return parteMin === '0' ? '0..n' : '1..n'
-  return `${parteMin}..${parteMax}`
 }
 
 function textoEnvolvente(texto: string, maximo: number): string[] {
@@ -70,7 +33,7 @@ function textoEnvolvente(texto: string, maximo: number): string[] {
 export function Lienzo(): JSX.Element {
   const tienda = useTienda()
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const [paneo, setPaneo] = useState<Punto>({ x: 40, y: 40 })
+  const [paneo, setPaneo] = useState<Punto>({ x: 180, y: 40 })
   const [zoom, setZoom] = useState(1)
   const [arrastre, setArrastre] = useState<Arrastre | null>(null)
   const [posiciones, setPosiciones] = useState<Record<string, Punto>>({})
@@ -91,18 +54,28 @@ export function Lienzo(): JSX.Element {
     if (tienda.vista !== 'propuesto' || !tienda.propuestaEnComparacion) return null
     const propuesta = tienda.proyecto.propuestas.find((p) => p.id === tienda.propuestaEnComparacion)
     if (!propuesta) return null
-    try {
-      const resultado = aplicarOperaciones(
-        { diseno: tienda.proyecto.diseno, reglas: tienda.proyecto.reglas },
-        propuesta.operaciones
-      )
-      return { propuesta, diseno: resultado.diseno }
-    } catch {
-      return { propuesta, diseno: null }
-    }
+    const resultado = proyectarPropuesta(tienda.proyecto, propuesta)
+    return { propuesta, diseno: resultado.estado?.diseno ?? null, error: resultado.error }
   }, [tienda.vista, tienda.propuestaEnComparacion, tienda.proyecto])
 
   const disenoVisible = propuestaActual?.diseno ?? tienda.proyecto.diseno
+
+  useEffect(() => {
+    const encuadrar = () => {
+      const rect = svgRef.current?.getBoundingClientRect()
+      const cajas = [...disenoVisible.entidades.map(e => ({ x: e.x, y: e.y, ancho: anchoEntidad(e), alto: altoEntidad(e) })), ...disenoVisible.notas]
+      if (!rect || !cajas.length) return
+      const x = Math.min(...cajas.map(c => c.x)), y = Math.min(...cajas.map(c => c.y))
+      const ancho = Math.max(...cajas.map(c => c.x + c.ancho)) - x
+      const alto = Math.max(...cajas.map(c => c.y + c.alto)) - y
+      const disponible = Math.max(100, rect.width - 240 - (tienda.panelAbierto ? 410 : 0))
+      const escala = Math.max(0.2, Math.min(1.5, disponible / Math.max(1, ancho), (rect.height - 160) / Math.max(1, alto)))
+      setZoom(escala)
+      setPaneo({ x: 180 - x * escala, y: 110 - y * escala })
+    }
+    window.addEventListener('lienzo:encuadrar', encuadrar)
+    return () => window.removeEventListener('lienzo:encuadrar', encuadrar)
+  }, [disenoVisible, tienda.panelAbierto])
 
   const idsAñadidos = useMemo(() => {
     const ids = new Set<string>()
@@ -172,13 +145,19 @@ export function Lienzo(): JSX.Element {
     const relacionObjetivo = (evento.target as Element).closest('[data-relacion-id]') as SVGElement | null
     const notaObjetivo = (evento.target as Element).closest('[data-nota-id]') as SVGElement | null
     const punto = puntoMundo(evento)
+    if (tienda.vista === 'propuesto' && (entidadObjetivo || relacionObjetivo || notaObjetivo)) {
+      const tipo = entidadObjetivo ? 'entidad' : relacionObjetivo ? 'relacion' : 'nota'
+      const id = entidadObjetivo?.dataset.entidadId ?? relacionObjetivo?.dataset.relacionId ?? notaObjetivo?.dataset.notaId
+      if (id) tienda.seleccionar({ tipo, id })
+      return
+    }
 
     if (evento.button === 1 || (!entidadObjetivo && !relacionObjetivo && !notaObjetivo)) {
-      if (tienda.herramienta === 'entidad' && evento.button === 0) {
+      if (tienda.vista === 'actual' && tienda.herramienta === 'entidad' && evento.button === 0) {
         tienda.crearEntidadEn(Math.round(punto.x), Math.round(punto.y))
         return
       }
-      if (tienda.herramienta === 'nota' && evento.button === 0) {
+      if (tienda.vista === 'actual' && tienda.herramienta === 'nota' && evento.button === 0) {
         tienda.crearNotaEn(Math.round(punto.x), Math.round(punto.y))
         return
       }
@@ -280,7 +259,7 @@ export function Lienzo(): JSX.Element {
     setZoom(siguiente)
   }
 
-  const entidades = disenoVisible.entidades
+  const entidades = [...disenoVisible.entidades, ...tienda.proyecto.diseno.entidades.filter(e => idsEliminados.has(e.id) && !disenoVisible.entidades.some(v => v.id === e.id))]
   const centroDe = (id: string): Punto => {
     const entidad = hallarEntidad(disenoVisible, id) ?? hallarEntidad(tienda.proyecto.diseno, id)
     if (!entidad) return { x: 0, y: 0 }
@@ -329,6 +308,8 @@ export function Lienzo(): JSX.Element {
               className={`relacion-linea ${seleccionada ? 'seleccionada' : ''} ${idsAfectados.has(relacion.id) ? 'afectada' : ''}`}
               data-relacion-id={relacion.id}
             >
+              <title>{relacion.nombre || 'Relación sin nombre'}</title>
+              {seleccionada && <text x={(origen.x + destino.x) / 2} y={(origen.y + destino.y) / 2 - 14}>{relacion.nombre}</text>}
               <line x1={origen.x} y1={origen.y} x2={destino.x} y2={destino.y} />
               <line
                 x1={origen.x}
@@ -374,7 +355,7 @@ export function Lienzo(): JSX.Element {
               <rect className="titulo" width={ancho} height={26} rx={8} />
               <rect className="titulo" y={12} width={ancho} height={14} />
               <text className="nombre" x={10} y={18}>
-                {eliminada ? `✕ ${entidad.nombre}` : entidad.nombre}
+                {eliminada ? `− ${entidad.nombre}` : fantasmas ? `+ ${entidad.nombre}` : propuestaActual && afectada ? `~ ${entidad.nombre}` : entidad.nombre}
               </text>
               {entidad.atributos.map((atributo, indice) => {
                 const clave = entidad.claves.find((c) => c.atributoIds.includes(atributo.id))
@@ -431,9 +412,10 @@ export function Lienzo(): JSX.Element {
       </g>
       <text x={10} y={20} fill="#9aa5b8" fontSize={11}>
         {tienda.vista === 'propuesto'
-          ? 'Vista propuesta (borrador de la propuesta seleccionada)'
+          ? propuestaActual?.error ? 'No se puede previsualizar. Consulta el detalle de la propuesta.' : `Propuesto · solo lectura · ${(propuestaActual?.propuesta.titulo ?? '').slice(0, 70)}`
           : `${entidades.length} entidades · ${disenoVisible.relaciones.length} relaciones · zoom ${Math.round(zoom * 100)}%`}
       </text>
+      {tienda.vista === 'propuesto' && <text x={10} y={36} fill="var(--texto-suave)" fontSize={11}>+ añadido · ~ modificado · − eliminado · * obligatorio · ? desconocido</text>}
     </svg>
   )
 }

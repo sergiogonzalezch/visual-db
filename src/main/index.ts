@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
 import iconoAplicacion from '../../resources/icon.png?asset'
+import { abrirCarpetaExportacion, exportarArchivos } from './exportacion'
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import {
@@ -78,6 +79,7 @@ function construirMenu(): void {
         { label: 'Abrir…', accelerator: 'CmdOrCtrl+O', click: () => ventana?.webContents.send('menu:abrir') },
         { label: 'Guardar', accelerator: 'CmdOrCtrl+S', click: () => ventana?.webContents.send('menu:guardar') },
         { label: 'Guardar como…', accelerator: 'CmdOrCtrl+Shift+S', click: () => ventana?.webContents.send('menu:guardar-como') },
+        { label: 'Exportar…', click: () => ventana?.webContents.send('menu:exportar') },
         { type: 'separator' },
         {
           label: 'Información de recuperación',
@@ -122,13 +124,16 @@ function construirMenu(): void {
     },
     {
       label: 'Ver',
-      submenu: [{ role: 'reload', label: 'Recargar' }, { role: 'toggleDevTools', label: 'Herramientas de desarrollo' }]
+      submenu: [{ role: 'reload', label: 'Recargar', accelerator: 'CmdOrCtrl+Shift+R' }, { role: 'toggleDevTools', label: 'Herramientas de desarrollo' }]
     }
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(plantilla))
 }
 
 function registrarIPC(): void {
+  ipcMain.handle('exportacion:version', () => app.getVersion())
+  ipcMain.handle('exportacion:guardar', (_e, solicitud: unknown) => ventana ? exportarArchivos(ventana, solicitud) : { estado: 'error', archivos: [], mensaje: 'No hay una ventana disponible.' })
+  ipcMain.handle('exportacion:abrir-carpeta', () => abrirCarpetaExportacion())
   ipcMain.handle('proyecto:guardar', async (_e, ruta: string, archivo: ArchivoProyecto) => {
     guardarProyecto(ruta, archivo)
     rutaAbierta = ruta

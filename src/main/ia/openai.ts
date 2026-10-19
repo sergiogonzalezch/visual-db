@@ -113,7 +113,7 @@ export const adaptadorOpenAI: AdaptadorProveedor = {
       return {
         ok: coincide,
         detalle: coincide
-          ? `Conectado. El modelo «${config.modelo}» está disponible. La capacidad de visión no es verificable automáticamente.`
+          ? config.modelo ? `Conectado. El modelo «${config.modelo}» está disponible. La capacidad de visión no es verificable automáticamente.` : 'Conectado al catálogo. Selecciona un modelo para generar respuestas.'
           : `Conectado, pero el modelo «${config.modelo}» no figura en la lista del proveedor.`,
         capacidades: capacidadesPorDefecto({ estructurado: true, vision: 'no-verificable' }),
         modelos: [...new Set(modelos)].sort()

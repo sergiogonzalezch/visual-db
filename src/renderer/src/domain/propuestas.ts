@@ -16,6 +16,7 @@ export interface Afectado {
   tipo: 'entidad' | 'atributo' | 'relacion' | 'regla' | 'nota'
   id: string
   huella: string
+  entidadId?: string
 }
 
 export interface Propuesta {
@@ -38,6 +39,7 @@ export interface Propuesta {
   creadaEn: string
   decididaEn: string | null
   notaDecision: string | null
+  origenIA?: { proveedor: string; modelo: string }
 }
 
 export function huellaEntidad(entidad: Entidad): string {
@@ -175,6 +177,7 @@ export function afectadosDeOperaciones(operaciones: Operacion[], diseno: Diseno,
     afectados.push({
       tipo: tipo as Afectado['tipo'],
       id,
+      ...(tipo === 'atributo' ? { entidadId: separada.slice(1, -1).join(':') } : {}),
       huella: mapa.get(clave) ?? ''
     })
   }
@@ -191,7 +194,7 @@ export function comprobarPropuesta(proyecto: Proyecto, propuesta: Propuesta): Co
   const motivos: string[] = []
   const mapa = huellasDiseno(proyecto.diseno, proyecto.reglas)
 
-  if (propuesta.estado === 'aplicada') {
+  if (propuesta.estado === 'aplicada' || propuesta.estado === 'aceptada') {
     motivos.push('La propuesta ya fue aplicada.')
   }
   if (propuesta.estado === 'rechazada') {
@@ -199,11 +202,11 @@ export function comprobarPropuesta(proyecto: Proyecto, propuesta: Propuesta): Co
   }
 
   for (const afectado of propuesta.afectados) {
-    const clave = claveAfectado(afectado)
+    const clave = claveAfectado(afectado, propuesta)
     const actual = mapa.get(clave)
     if (actual === undefined) {
       if (afectado.huella === '') continue
-      motivos.push(`El elemento afectado ya no existe (${afectado.tipo} ${afectado.id}).`)
+      motivos.push(`El elemento afectado ya no existe (${afectado.tipo} «${nombreElemento(proyecto, afectado)}»).`)
       continue
     }
     if (actual !== afectado.huella) {
@@ -224,11 +227,24 @@ export function comprobarPropuesta(proyecto: Proyecto, propuesta: Propuesta): Co
   return { aplicable: motivos.length === 0, motivos, dependenciasIncumplidas }
 }
 
-function claveAfectado(afectado: Afectado): string {
+function claveAfectado(afectado: Afectado, propuesta: Propuesta): string {
+  if (afectado.tipo === 'atributo') {
+    // Archivos anteriores: recuperar el propietario desde las operaciones, nunca por coincidencia global.
+    const propietarios = new Set(propuesta.operaciones.flatMap(op =>
+      (op.op === 'updateAtributo' || op.op === 'removeAtributo') && op.id === afectado.id
+        ? [op.entidadId]
+        : op.op === 'addAtributo' && op.atributo.id === afectado.id ? [op.entidadId] : []))
+    const entidadId = afectado.entidadId ?? (propietarios.size === 1 ? [...propietarios][0] : undefined)
+    return `atributo:${entidadId ?? 'identidad-ambigua'}:${afectado.id}`
+  }
   return `${afectado.tipo}:${afectado.id}`
 }
 
 function nombreElemento(proyecto: Proyecto, afectado: Afectado): string {
+  if (afectado.tipo === 'atributo') {
+    const entidad = proyecto.diseno.entidades.find(e => (!afectado.entidadId || e.id === afectado.entidadId) && e.atributos.some(a => a.id === afectado.id))
+    return entidad ? `${entidad.nombre}.${entidad.atributos.find(a => a.id === afectado.id)!.nombre}` : afectado.id
+  }
   if (afectado.tipo === 'entidad') {
     return proyecto.diseno.entidades.find((e) => e.id === afectado.id)?.nombre ?? afectado.id
   }

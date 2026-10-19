@@ -1,18 +1,20 @@
 import { usePuedeDeshacer, usePuedeRehacer, useTienda } from '../estado/tienda'
 import { MenuAcciones } from './MenuAcciones'
 import { Icono } from './Icono'
+import { NombreProyecto } from './NombreProyecto'
 
-export function Cabecera(): JSX.Element {
+export function Cabecera({ exportar }: { exportar: () => void }): JSX.Element {
   const tienda = useTienda()
   const puedeDeshacer = usePuedeDeshacer()
   const puedeRehacer = usePuedeRehacer()
   return <header className="cabecera">
-    <div className="identidad-aplicacion"><span className="marca-aplicacion">Visual BD</span><div className="identidad-proyecto"><strong className="titulo-proyecto" title={tienda.proyecto.nombre}>{tienda.proyecto.nombre}</strong><span className="guardado">{tienda.sucio ? 'Cambios sin guardar' : tienda.ruta ? 'Guardado' : 'Sin ruta de guardado'}</span></div></div>
+    <div className="identidad-aplicacion"><span className="marca-aplicacion">Visual BD</span><NombreProyecto /></div>
     <nav className="acciones-cabecera" aria-label="Acciones del proyecto">
       <MenuAcciones etiqueta="Archivo" acciones={[
         { etiqueta: 'Nuevo proyecto', ejecutar: tienda.nuevo },
         { etiqueta: 'Abrir proyecto…', ejecutar: () => void tienda.abrir() },
-        { etiqueta: 'Guardar como…', ejecutar: () => void tienda.guardarComo() }
+        { etiqueta: 'Guardar como…', ejecutar: () => void tienda.guardarComo() },
+        { etiqueta: 'Exportar…', detalle: 'Reporte, imagen, Mermaid o draw.io', ejecutar: exportar }
       ]} />
       <button onClick={() => void tienda.guardar()} title="Ctrl+S">Guardar</button>
       <MenuAcciones etiqueta="Importar" acciones={[

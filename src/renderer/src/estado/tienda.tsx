@@ -1,3 +1,4 @@
+import { mensajeErrorVisible } from '../presentacion/errores'
 import { chatInicial } from '../presentacion/chat-proyecto'
 import {
   createContext,
@@ -104,6 +105,7 @@ interface Tienda {
   guardar: () => Promise<void>
   guardarComo: () => Promise<void>
   abrir: () => Promise<void>
+  renombrarProyecto: (nombre: string) => void
   nuevo: () => void
   importarDrawio: () => Promise<void>
   importarImagen: () => Promise<void>
@@ -128,6 +130,7 @@ interface Tienda {
     dependeDe: string[]
   }) => void
   solicitarRevision: () => Promise<void>
+  cancelarRevision: () => void
   aceptarPropuesta: (id: string) => void
   rechazarPropuesta: (id: string, nota: string | null) => void
   discutirPropuesta: (id: string, texto: string) => Promise<void>
@@ -176,6 +179,8 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   const [mensajesChat, establecerMensajesChat] = useState<MensajeChat[]>(chatInicial)
   const mensajesChatRef = useRef(mensajesChat)
   const sesionChat = useRef(0)
+  const revisionEnCurso = useRef(false)
+  const turnoRevision = useRef(0)
   const [versionChat, setVersionChat] = useState(0)
   const setMensajesChat = useCallback((valor: MensajeChat[] | ((prev: MensajeChat[]) => MensajeChat[])) => {
     const siguientes = typeof valor === 'function' ? valor(mensajesChatRef.current) : valor
@@ -185,7 +190,14 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     setSucio(true)
   }, [])
   const cargarChat = useCallback((valor?: unknown) => {
+    setAviso(null)
     sesionChat.current += 1
+    turnoRevision.current += 1
+    revisionEnCurso.current = false
+    setVista('actual')
+    setPropuestaEnComparacion(null)
+    setHallazgos([])
+    setResultadoNormalizacion(null)
     const mensajes = chatInicial(valor)
     mensajesChatRef.current = mensajes
     establecerMensajesChat(mensajes)
@@ -224,13 +236,17 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
   historialRef.current = historial
 
   const aplicar = useCallback<Tienda['aplicar']>((operaciones, opciones = {}) => {
+    if (vista === 'propuesto') { setAviso('La propuesta es de solo lectura. Vuelve a Actual para editar.'); return }
     if (operaciones.length === 0) return
+    const primera = operaciones[0]
     try {
       const resultado = editar(
         { diseno: proyectoRef.current.diseno, reglas: proyectoRef.current.reglas },
         historialRef.current,
         operaciones,
-        opciones
+        operaciones.length === 1 && primera.op === 'updateEntidad' && !opciones.etiqueta
+          ? { ...opciones, etiqueta: `Modificar entidad «${primera.parche.nombre ?? proyectoRef.current.diseno.entidades.find(e => e.id === primera.id)?.nombre ?? 'Entidad'}»` }
+          : opciones
       )
       const siguiente: Proyecto = {
         ...proyectoRef.current,
@@ -243,11 +259,12 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       setHistorial(resultado.historial)
       setSucio(true)
     } catch (error) {
-      setAviso(`No se pudo aplicar el cambio: ${(error as Error).message}`)
+      setAviso(`No se pudo aplicar el cambio: ${mensajeErrorVisible((error as Error).message)}`)
     }
-  }, [])
+  }, [vista])
 
   const deshacer = useCallback(() => {
+    if (vista === 'propuesto') { setAviso('Vuelve a Actual para modificar el historial.'); return }
     const resultado = deshacerHistorial(
       { diseno: proyectoRef.current.diseno, reglas: proyectoRef.current.reglas },
       historialRef.current
@@ -263,9 +280,10 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     setHistorial(resultado.historial)
     setSucio(true)
     setSeleccion(null)
-  }, [])
+  }, [vista])
 
   const rehacer = useCallback(() => {
+    if (vista === 'propuesto') { setAviso('Vuelve a Actual para modificar el historial.'); return }
     const resultado = rehacerHistorial(
       { diseno: proyectoRef.current.diseno, reglas: proyectoRef.current.reglas },
       historialRef.current
@@ -280,7 +298,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     })
     setHistorial(resultado.historial)
     setSucio(true)
-  }, [])
+  }, [vista])
 
   const empaquetar = useCallback(
     (p: Proyecto = proyectoRef.current, h: Historial = historialRef.current) => ({
@@ -292,7 +310,16 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     []
   )
 
+  const renombrarProyecto = useCallback((nombre: string) => {
+    if (nombre.slice(0, 120) === proyectoRef.current.nombre) return
+    const actual = { ...proyectoRef.current, nombre: nombre.slice(0, 120), actualizadoEn: new Date().toISOString() }
+    proyectoRef.current = actual
+    setProyecto(actual)
+    setSucio(true)
+  }, [])
+
   const guardar = useCallback(async () => {
+    if (!proyectoRef.current.nombre.trim()) { setAviso("Escribe un nombre para el proyecto antes de guardar."); return }
     const actual = ruta
     if (!actual) {
       await guardarComo()
@@ -312,11 +339,12 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         null
       )
     } catch (error) {
-      setAviso(`Error al guardar: ${(error as Error).message}`)
+      setAviso(`Error al guardar: ${mensajeErrorVisible((error as Error).message)}`)
     }
   }, [ruta, empaquetar, ajustes])
 
   const guardarComo = useCallback(async () => {
+    if (!proyectoRef.current.nombre.trim()) { setAviso("Escribe un nombre para el proyecto antes de guardar."); return }
     try {
       const archivo = empaquetar()
       const sesion = sesionChat.current
@@ -332,7 +360,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       )
       setAjustes(actuales)
     } catch (error) {
-      setAviso(`Error al guardar: ${(error as Error).message}`)
+      setAviso(`Error al guardar: ${mensajeErrorVisible((error as Error).message)}`)
     }
   }, [empaquetar, ajustes])
 
@@ -352,7 +380,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         null
       )
     } catch (error) {
-      setAviso(`No se pudo abrir el proyecto: ${(error as Error).message}`)
+      setAviso(`No se pudo abrir el proyecto: ${mensajeErrorVisible((error as Error).message)}`)
     }
   }, [ajustes])
 
@@ -382,7 +410,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         resoluciones: proyectoBase.revision.ambiguidades.map(() => null)
       })
     } catch (error) {
-      setAviso(`Importación draw.io fallida: ${(error as Error).message}`)
+      setAviso(`Importación draw.io fallida: ${mensajeErrorVisible((error as Error).message)}`)
     }
   }, [])
 
@@ -429,7 +457,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       void refrescarConsumo()
     } catch (error) {
       setEstadoIA((prev) => ({ ...prev, revisando: false }))
-      setAviso(`Importación de imagen fallida: ${(error as Error).message}`)
+      setAviso(`Importación de imagen fallida: ${mensajeErrorVisible((error as Error).message)}`)
     }
   }, [ajustes, refrescarConsumo])
 
@@ -441,7 +469,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       const { proyecto: proyectoBase } = borradorAProyecto(borrador, proyectoRef.current.nombre)
       setEstadoBorrador({ borrador, proyectoBase, resoluciones: proyectoBase.revision.ambiguidades.map(() => null) })
     } catch (error) {
-      setAviso(`Importación de Markdown fallida: ${(error as Error).message}`)
+      setAviso(`Importación de Markdown fallida: ${mensajeErrorVisible((error as Error).message)}`)
     }
   }, [])
 
@@ -461,7 +489,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         void refrescarConsumo()
       } catch (error) {
         setEstadoIA((prev) => ({ ...prev, revisando: false }))
-        setAviso(`La interpretación IA falló: ${(error as Error).message}`)
+        setAviso(`La interpretación IA falló: ${mensajeErrorVisible((error as Error).message)}`)
       }
     },
     [refrescarConsumo]
@@ -546,8 +574,19 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     setAviso('Propuesta creada desde el análisis local. Revísala en la pestaña Revisión; se aplica solo con tu aprobación.')
   }, [])
 
+  const cancelarRevision = useCallback(() => {
+    turnoRevision.current += 1
+    revisionEnCurso.current = false
+    setEstadoIA(prev => ({ ...prev, revisando: false, error: null }))
+    setAviso('Revisión descartada. Su respuesta no se incorporará al proyecto; el proveedor puede seguir procesando la solicitud.')
+  }, [])
   const solicitarRevision = useCallback(async () => {
+    if (revisionEnCurso.current) return
+    revisionEnCurso.current = true
+    const turno = ++turnoRevision.current
+    const origen = structuredClone(proyectoRef.current)
     const sesion = sesionChat.current
+    setAviso(null)
     setPestana('revision')
     setSeccionRevision('propuestas')
     setEstadoIA((prev) => ({ ...prev, revisando: true, error: null }))
@@ -570,9 +609,10 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
           .join(' | ')
       }
       const respuesta = await api().revisar(solicitud)
-      if (sesion !== sesionChat.current) return
+      if (sesion !== sesionChat.current || turno !== turnoRevision.current) return
       const nuevas: Propuesta[] = respuesta.propuestas.map((entrada) =>
-        crearPropuesta(proyectoRef.current, {
+        crearPropuesta(origen, {
+          origenIA: ajustes ? { proveedor: ajustes.proveedor.proveedor, modelo: ajustes.proveedor.modelo } : undefined,
           categoria: entrada.categoria,
           prioridad: entrada.prioridad,
           titulo: entrada.titulo,
@@ -586,7 +626,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
           dependeDe: entrada.dependeDe
         })
       )
-      setProyecto((prev) => guardarNuevasPropuestas(prev, nuevas))
+      setProyecto((prev) => marcarDesactualizadas(guardarNuevasPropuestas(prev, nuevas)))
       setMensajesChat((prev) => [
         ...prev,
         {
@@ -595,24 +635,25 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
           fecha: new Date().toISOString()
         }
       ])
-      setPestana('revision')
-      setSeccionRevision('propuestas')
+      setAviso(`Revisión terminada: ${nuevas.length} propuesta(s). Ningún cambio se aplicó automáticamente.`)
       setSucio(true)
       setEstadoIA((prev) => ({ ...prev, revisando: false }))
       void refrescarConsumo()
     } catch (error) {
-      if (sesion !== sesionChat.current) return
-      setEstadoIA((prev) => ({ ...prev, revisando: false, error: (error as Error).message }))
+      if (sesion !== sesionChat.current || turno !== turnoRevision.current) return
+      setEstadoIA((prev) => ({ ...prev, revisando: false, error: mensajeErrorVisible((error as Error).message) }))
       setMensajesChat((prev) => [
         ...prev,
         {
           rol: 'sistema',
-          contenido: `La revisión falló: ${(error as Error).message}. El diseño permanece editable; puedes reintentar.`,
+          contenido: `La revisión falló: ${mensajeErrorVisible((error as Error).message)}. El diseño permanece editable; puedes reintentar.`,
           fecha: new Date().toISOString()
         }
       ])
+    } finally {
+      if (turno === turnoRevision.current) revisionEnCurso.current = false
     }
-  }, [refrescarConsumo])
+  }, [refrescarConsumo, ajustes])
 
   const aceptarPropuesta = useCallback((id: string) => {
     const propuesta = proyectoRef.current.propuestas.find((p) => p.id === id)
@@ -622,10 +663,12 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       setAviso(`No se pudo aplicar la propuesta: ${resultado.motivos.join(' ')}`)
       return
     }
-    setProyecto(resultado.proyecto)
+    setProyecto(marcarDesactualizadas(resultado.proyecto))
     setHistorial(resultado.historial)
+    setVista('actual')
+    setPropuestaEnComparacion(null)
     setSucio(true)
-    setAviso(`Propuesta aplicada: «${propuesta.titulo}». Puedes deshacerla con Ctrl+Z.`)
+    setAviso(propuesta.operaciones.length ? `Propuesta aplicada: «${propuesta.titulo}». Puedes deshacerla con Ctrl+Z.` : `Aclaración revisada: «${propuesta.titulo}». El diseño no cambió.`)
   }, [])
 
   const rechazarPropuestaCallback = useCallback((id: string, nota: string | null) => {
@@ -672,12 +715,12 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       void refrescarConsumo()
     } catch (error) {
       if (sesion !== sesionChat.current) return
-      setEstadoIA((prev) => ({ ...prev, chateando: false, error: (error as Error).message }))
+      setEstadoIA((prev) => ({ ...prev, chateando: false, error: mensajeErrorVisible((error as Error).message) }))
       setMensajesChat((prev) => [
         ...prev,
         {
           rol: 'sistema',
-          contenido: `El proveedor falló: ${(error as Error).message}`,
+          contenido: `El proveedor falló: ${mensajeErrorVisible((error as Error).message)}`,
           fecha: new Date().toISOString()
         }
       ])
@@ -713,12 +756,12 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         void refrescarConsumo()
       } catch (error) {
         if (sesion !== sesionChat.current) return
-        setEstadoIA((prev) => ({ ...prev, chateando: false, error: (error as Error).message }))
+        setEstadoIA((prev) => ({ ...prev, chateando: false, error: mensajeErrorVisible((error as Error).message) }))
         setMensajesChat((prev) => [
           ...prev,
           {
             rol: 'sistema',
-            contenido: `El proveedor falló: ${(error as Error).message}`,
+            contenido: `El proveedor falló: ${mensajeErrorVisible((error as Error).message)}`,
             fecha: new Date().toISOString()
           }
         ])
@@ -879,7 +922,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
         rehacer()
       } else if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 's') {
         evento.preventDefault()
-        void guardar()
+        void (evento.shiftKey ? guardarComo() : guardar())
       } else if (evento.key === 'Escape') {
         setEntidadOrigenRelacion(null)
         setHerramienta('seleccion')
@@ -889,7 +932,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
     }
     window.addEventListener('keydown', manejador)
     return () => window.removeEventListener('keydown', manejador)
-  }, [deshacer, rehacer, guardar, eliminarSeleccion])
+  }, [deshacer, rehacer, guardar, guardarComo, eliminarSeleccion])
 
   // menú nativo
   useEffect(() => {
@@ -960,6 +1003,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       guardarComo,
       abrir,
       nuevo,
+      renombrarProyecto,
       importarDrawio,
       importarImagen,
       importarMarkdown: importarMarkdownFlujo,
@@ -971,6 +1015,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       resolverAmbiguedad,
       agregarPropuestaLocal,
       solicitarRevision,
+      cancelarRevision,
       aceptarPropuesta,
       rechazarPropuesta: rechazarPropuestaCallback,
       discutirPropuesta,
@@ -1025,6 +1070,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       guardarComo,
       abrir,
       nuevo,
+      renombrarProyecto,
       importarDrawio,
       importarImagen,
       importarMarkdownFlujo,
@@ -1036,6 +1082,7 @@ export function TiendaProvider({ children }: { children: ReactNode }): JSX.Eleme
       resolverAmbiguedad,
       agregarPropuestaLocal,
       solicitarRevision,
+      cancelarRevision,
       aceptarPropuesta,
       rechazarPropuestaCallback,
       discutirPropuesta,

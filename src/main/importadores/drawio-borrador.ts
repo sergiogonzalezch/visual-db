@@ -84,6 +84,7 @@ function cardinalidadDeEtiqueta(lado: 'inicio' | 'fin', etiqueta: string): strin
   if (/^0\.\.1$/.test(candidato) || /^0\?$/i.test(candidato)) return '0..1'
   if (/^n$|^N$|^m$|^M$|\*/.test(candidato)) return 'n'
   if (/^0\.\.n$/i.test(candidato) || /^0\.\.\*$/i.test(candidato)) return '0..n'
+  if (/^1\.\.(n|\*)$/i.test(candidato)) return '1..n'
   return null
 }
 export function construirBorrador(resultado: ResultadoDrawio, paginas: string[]): BorradorDrawio {

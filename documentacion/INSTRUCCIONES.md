@@ -1,207 +1,267 @@
 # Visual BD — Instrucciones de uso y desarrollo
 
-Aplicación de escritorio para diseñar modelos de bases de datos relacionales de forma visual, con revisión por IA que **propone** cambios que tú apruebas o rechazas. No genera SQL ni DDL (por diseño).
+Visual BD permite diseñar modelos relacionales y revisar su lógica. La IA propone; el usuario decide. No genera ni ejecuta SQL, DDL, migraciones, modelos ORM o esquemas NoSQL.
 
----
+## 1. Elige tu guía
 
-## 1. Requisitos
+- [Guía visual paso a paso](guia/index.html): siete etapas, ilustración animada opcional y mapa filtrable de las funciones.
+- [Referencia técnica](guia/tecnica.html): arquitectura, módulos, contratos IPC, estados y limitaciones.
+- [Exportación](exportacion.md): formatos, alcance y contrato documental.
 
-- Node.js 20 o superior (probado con Node 24) y npm.
-- Windows, macOS o Linux (desarrollo probado en Windows).
-- Para la IA local: [Ollama](https://ollama.com) instalado y en ejecución.
-- O bien una API remota: OpenAI, Anthropic (Claude), Google (Gemini), xAI (Grok), OpenRouter u otro servicio compatible con OpenAI (clave según el proveedor).
+Las dos páginas HTML son estáticas y funcionan abriendo `documentacion/guia/index.html` en un navegador, también sin conexión. No acceden a proyectos, proveedores ni credenciales. La reproducción del recorrido es opcional y respeta movimiento reducido. Para servirlas por HTTP local, sirve `documentacion/` y abre `/guia/`; no requieren compilar la aplicación.
 
----
+El inventario de las dos páginas se mantiene en `documentacion/guia/catalogo.js`; `guia.js` aporta búsqueda, filtros, enlaces por función y recorrido, y `estilos.css` comparte los tokens visuales. Para añadir una función, actualiza el catálogo y contrástala con su acceso y módulo reales.
 
-## 2. Instalación
+## 2. Requisitos e inicio
+
+Node.js 20+ y npm; desarrollo probado en Windows. macOS y Linux requieren completar sus verificaciones. Para IA local necesitas Ollama en ejecución con un modelo instalado. Revisar reglas, editar y exportar no requieren IA.
 
 ```bash
 npm install
+npm run dev
 ```
 
-Si la binaria de Electron falla en descargarse:
+Si la descarga inicial de Electron no terminó, puedes repetir su instalador con `node node_modules/electron/install.js`.
 
-```bash
-node node_modules/electron/install.js
+| Comando | Función |
+| --- | --- |
+| `npm run dev` | Electron con recarga de desarrollo del renderer. |
+| `npm start` | Abre la vista previa mediante electron-vite preview. |
+| `npm test` | Pruebas de dominio, importación, exportación, persistencia, IA y presentación. |
+| `npm run typecheck` | Tipado de main/preload, renderer y pruebas de integración. |
+| `npm run build` | Compila a `out/`. |
+| `npm run pack` | Empaqueta sin instalador. |
+| `npm run dist` | Genera distribución mediante electron-builder. |
+
+Pack y dist son comandos disponibles, no instaladores publicados ni una certificación de plataformas. El ejecutador simplificado sigue pospuesto.
+
+## 3. Flujo de trabajo recomendado
+
+1. Crea o abre un proyecto y ponle nombre.
+2. Construye el modelo o importa y confirma una interpretación.
+3. Completa atributos, claves, relaciones y reglas conocidas.
+4. Ejecuta **Revisar → Revisar reglas** y lee las limitaciones por datos desconocidos.
+5. Opcional: configura un proveedor, conecta y selecciona un modelo; solicita **Revisar con IA**.
+6. Compara y decide cada propuesta. Guarda el proyecto editable.
+7. Exporta un reporte y/o diagrama según el destinatario.
+
+La guía visual desarrolla estas etapas con un ejemplo de Cliente y Pedido; sus botones no ejecutan acciones reales de la aplicación.
+
+## 4. Proyectos, nombre y guardado
+
+### Nombre protegido
+
+El nombre aparece en la cabecera junto a un lápiz. Pulsa **Editar nombre del proyecto** para desbloquearlo. Confirma con **✓**, **Enter** o saliendo del campo: vuelve a solo lectura hasta pulsar el lápiz otra vez. El nombre admite hasta 120 caracteres y no puede quedar vacío al guardar.
+
+**Cambios sin guardar** indica modificaciones pendientes; **Guardado** confirma el último guardado en la ruta existente; **Sin ruta de guardado** indica que todavía necesitas elegir un archivo.
+
+### Archivo editable
+
+**Guardar** conserva el modelo en `.vbdproj`. **Guardar como** permite elegir otra ruta. Renombrar el proyecto no cambia automáticamente el nombre del archivo ya elegido. Su nombre sí se utiliza como sugerencia al guardar como y al exportar.
+
+El archivo contiene `formatoVersion`, `proyecto`, `historial` y `mensajesChat` opcional para compatibilidad. Las credenciales están fuera. El guardado usa un archivo temporal y renombrado.
+
+**Nuevo proyecto** limpia la conversación y el texto sin enviar. **Abrir** restaura el chat del archivo seleccionado; los archivos antiguos sin chat muestran una bienvenida. Compartir `.vbdproj` comparte también su conversación.
+
+### Recuperación
+
+La copia automática por proyecto se escribe con un retardo aproximado de tres segundos cuando hay cambios. Al arrancar se puede ofrecer restaurarla; el menú **Proyecto → Información de recuperación** permite consultarla. La recuperación no sustituye guardar el archivo de trabajo.
+
+## 5. Crear o importar un modelo
+
+### Desde cero
+
+Elige Entidad y pulsa el lienzo. Selecciónala para editar nombre, descripción, atributos y claves en Propiedades. Para relacionar dos entidades, elige Relación y pulsa origen y destino. Volver a pulsar el origen cancela ese intento; Escape también permite salir de la herramienta.
+
+### Importaciones
+
+| Entrada | Interpretación | Qué debes revisar |
+| --- | --- | --- |
+| draw.io / XML | Lectura estructural de páginas planas o comprimidas. | Entidades, conectores, cardinalidades y figuras no clasificadas. |
+| Markdown | Listas, tablas y prosa estructurada reconocida de forma determinista. | Nombres exactos, PK/FK, relaciones y reglas. |
+| Imagen | Interpretación por un modelo adecuado, o solo referencia si no se puede interpretar. | Lectura visual, omisiones, cardinalidades y ambigüedades. |
+| Prosa asistida | Interpretación por IA cuando se solicita ese flujo. | Supuestos, entidades y relaciones inferidas. |
+
+Al importar, **Confirmar interpretación importada** muestra el borrador antes de incorporarlo. Resuelve las ambigüedades disponibles o consérvalas explícitamente pendientes. Puedes descartar la importación.
+
+En el flujo actual, importar imagen con **Solo local** activado o sin modelo conserva una referencia sin interpretación automática. La imagen de referencia no se guarda dentro de `.vbdproj`. No se debe confundir esta limitación del flujo de imagen con la revisión textual local mediante Ollama, que sí está permitida.
+
+Ejemplo de Markdown:
+
+```markdown
+# Tienda
+## Cliente
+- cliente_id (PK)
+- nombre
+## Pedido
+- pedido_id (PK)
+- cliente_id (FK)
+Relación: Cliente -> (1, 0..n) Pedido
+Regla: Cada pedido pertenece a un cliente.
 ```
 
----
+Los extremos deben coincidir exactamente con los nombres de entidad. Varias marcas PK forman una clave primaria compuesta. Una marca FK en el texto puede necesitar completar su referencia y mapeo en Propiedades: no equivale por sí sola a una FK completamente definida.
 
-## 3. Comandos
+## 6. Herramientas, propiedades y paneles
 
-| Comando | Descripción |
-|---|---|
-| `npm run dev` | Arranca en desarrollo (ventana de Electron + HMR del renderer) |
-| `npm run test` | Ejecuta las pruebas con Vitest (dominio, importadores, IA, persistencia y presentación) |
-| `npm run typecheck` | Comprobación de tipos de main/preload y renderer |
-| `npm run build` | Compila main, preload y renderer a `out/` |
-| `npm start` | Vista previa de la compilación (`preview`) |
-| `npm run pack` | Empaqueta la app sin instalador (`electron-builder --dir`) |
-| `npm run dist` | Genera el instalador de distribución (`electron-builder`) |
+La barra vertical es flotante y arrastrable. Usa su asa o enfócala y pulsa flechas; Shift aumenta el paso. Escape cancela el arrastre. Su posición se conserva como preferencia local.
 
-Flujo recomendado antes de commitear: `npm run test && npm run typecheck && npm run build`.
+| Control | Uso |
+| --- | --- |
+| Seleccionar | Seleccionar entidades, relaciones y notas; arrastrar entidades en Actual. |
+| Entidad | Crear una entidad haciendo clic en el lienzo. |
+| Relación | Elegir origen y destino. |
+| Nota | Añadir texto de contexto al lienzo. |
+| Ajustar al contenido | En la barra arrastrable: encuadra entidades y notas, sin mover el modelo. |
+| Restablecer | Devuelve la barra a su posición inicial; no encuadra el modelo. |
 
----
+Rueda: zoom. Clic izquierdo en vacío: paneo; clic central inicia el paneo. La cápsula centrada muestra Modelo lógico y **Actual / Propuesto**.
 
-## 4. Uso de la aplicación
+Abre el panel desde el tirador a media altura del borde derecho. Se superpone al lienzo. Incluye:
 
-### 4.1 Flujo general
+- **Propiedades**: entidad, atributos, PK, claves candidatas y FK; extremos de relaciones y notas. Sin selección permite añadir reglas y consultar información desconocida.
+- **Revisión**: Reglas y Propuestas, con filtros de estado y detalle.
+- **Chat**: conversación por proyecto y discusión contextual.
+- **Consumo**: peticiones y tokens registrados localmente.
 
-1. **Crear o importar** un modelo:
-   - *Archivo → Nuevo proyecto* desde cero (`Ctrl+N`).
-   - *Importar draw.io* (`.drawio` / `.xml`), *imagen* de un diagrama o *Markdown*.
-   - Al importar se abre el diálogo **Confirmar interpretación importada**: revisa entidades, conexiones, reglas y ambigüedades; resuelve cada ambigüedad con sus acciones (o déjala pendiente) y confirma.
-2. **Editar en el lienzo** con las herramientas (ver §5).
-3. **Revisar reglas** desde el desplegable *Revisar* (hallazgos estructurales y de normalización 1FN–BCNF, sin llamadas a IA).
-4. **Revisar con IA** desde el mismo desplegable o con `Ctrl+R`: el modelo propone operaciones; cada propuesta se aprueba, rechaza o discute. Nada se aplica sin tu confirmación.
-5. **Guardar** (`Ctrl+S`) en formato `.vbdproj`.
+Cierra con el tirador, el botón de cierre o Escape cuando no haya otro diálogo abierto. Las pestañas conservan contexto dentro del mismo proyecto y se reinician al cambiar de proyecto.
 
-### 4.2 Revisión y propuestas
+Una relación dibujada y una clave foránea declarada son cosas diferentes. Puedes crear la FK desde Propiedades de la relación o desde la entidad, indicando entidad y clave destino. Para una clave compuesta, comprueba el conjunto y orden de atributos y su mapeo.
 
-- Panel **Revisión**: ambigüedades de interpretación, hallazgos de validación, análisis de normalización y tarjetas de propuestas IA.
-- En cada propuesta: **Aceptar** (aplicación atómica con deshacer), **Rechazar**, **Comparar** (vista antes/después en el lienzo con `Vista propuesta`) y **Discutir** (abre el chat con la propuesta como contexto).
-- Si el diseño cambia tras emitirse una propuesta, queda marcada como desactualizada y no puede aplicarse.
-- El chat permite explicar el diseño y discutir propuestas; conversar no aplica cambios al modelo.
+## 7. Revisar reglas y revisar con IA
 
-### Inspector y vistas del lienzo
+### Revisar reglas
 
-- Abre el inspector con la pestaña situada a media altura del borde derecho. Se desliza sobre el lienzo, sin desplazar el diseño.
-- Contiene **Propiedades**, **Revisión**, **Chat** y **Consumo**. Cierra con el tirador, el botón de cierre o `Esc` cuando no haya un diálogo abierto.
-- La cápsula flotante centrada en la parte superior muestra **Modelo lógico** y las vistas **Actual/Propuesto**. Propuesto se habilita al comparar una propuesta; volver a Actual termina la comparación.
-- Al crear una relación, la indicación para elegir la entidad destino aparece debajo de la cápsula.
+No usa proveedor ni consume tokens. Comprueba estructura y normalización 1FN–BCNF con claves y dependencias declaradas. Puede mostrar **Verificado con la información declarada**, **Posible problema** o **Información insuficiente**. Datos desconocidos no se inventan para alcanzar una conclusión.
 
-### Conversaciones por proyecto
+Algunos hallazgos ofrecen **Convertir en propuesta para aprobar**. Crear la propuesta todavía no modifica el diseño.
 
-- **Nuevo proyecto** inicia una conversación limpia con el mensaje de bienvenida y borra el texto sin enviar.
-- **Abrir** restaura únicamente los mensajes del archivo seleccionado. Los archivos antiguos sin chat muestran la bienvenida.
-- **Guardar** y **Guardar como** incluyen los mensajes en el `.vbdproj`; enviar o recibir mensajes marca el proyecto con cambios pendientes y activa la recuperación automática.
-- Al cambiar de proyecto, las respuestas de chat o revisión IA pendientes del anterior se ignoran. Esto no cancela necesariamente la petición al proveedor.
-- El texto sin enviar es temporal. Los mensajes enviados quedan fuera de Deshacer/Rehacer del diseño.
-- Compartir el archivo también comparte la conversación. Las credenciales continúan fuera del proyecto.
+### Revisar con IA
 
-### 4.3 Importaciones
+Requiere conexión y modelo seleccionados. Envía el diseño y contexto del proyecto al proveedor activo y muestra el estado de espera. La respuesta incorpora recomendaciones y propuestas, sin aplicarlas.
 
-- **draw.io**: lee `mxfile` comprimido (deflate) y sin comprimir; detecta entidades (cajas con varias líneas o clave PK), conexiones con cardinalidades (`1`, `0..1`, `n`, `1..n`…) y múltiples páginas. La lectura estructural es determinista: todo lo no reconocido queda visible, nunca se descarta en silencio.
-- **Imagen**: requiere proveedor IA con visión (no disponible en modo Solo local). Devuelve un borrador que debes confirmar.
-- **Markdown**: acepta secciones `## Entidad` con listas (`- id (PK)`) o tablas con columna PK/FK, más prosa tipo `Relación: Cliente 1..N Pedido` y `Regla: …`. También puede pasar por IA con *Interpretar prosa*.
+Lee explicación, fundamento, supuestos, preguntas, resultado y contrapartidas. La calidad semántica requiere revisión humana: un JSON válido no demuestra que el consejo sea correcto.
 
-### 4.4 Interpretabilidad de lo desconocido
+### Comparación y decisiones
 
-El marcaje `desconocido` es explícito en todo el modelo: cardinalidades, tipos de datos y nulabilidad no inferidos se muestran con `?` o se resuelven como ambigüedades. Nunca se inventa información.
+1. En Revisión → Propuestas, abre una tarjeta y consulta el desglose **Actual → Propuesto**, incluso si el cambio solo afecta reglas.
+2. Pulsa **Ver antes/después** para mostrar el borrador en el lienzo. El inspector usa los valores propuestos y es de solo lectura. Vuelve a Actual para editar.
+3. **Aceptar cambios** comprueba afectados y dependencias y aplica el grupo de forma atómica. Si hay conflictos reales, muestra el motivo y bloquea la acción. No fuerces propuestas desactualizadas.
+4. Tras aplicar, la vista vuelve a Actual. No se ofrece una comparación histórica de esa propuesta aplicada.
+5. **Rechazar** conserva el diseño. **Discutir en el chat** no aprueba la propuesta.
+6. Una aclaración sin operaciones ofrece **Marcar como revisada**: no modifica diseño, versión ni historial, ni confirma sus supuestos de negocio.
 
----
+Leyenda del lienzo propuesto: `+` añadido, `~` modificado y `−` eliminado. `*` indica atributo obligatorio; `?` indica información desconocida. No son el mismo tipo de marca.
 
-## 5. Herramientas y atajos del lienzo
+### Espera, errores y respuestas tardías
 
-Herramientas (panel vertical flotante):
+Ante un error puedes **Reintentar revisión** o **Revisar proveedor y modelo**. Un catálogo accesible no garantiza que todos sus modelos puedan generar para tu cuenta.
 
-Arrastra el asa superior para mover el panel dentro del lienzo. También puedes enfocar el asa y usar las flechas; `Shift` aumenta el paso y `Esc` cancela el arrastre. **Restablecer** devuelve su posición inicial.
+**Descartar respuesta pendiente** impide incorporarla al proyecto. No garantiza detener el procesamiento del servidor ni sus cargos. Al cambiar de proyecto se ignoran respuestas de la sesión anterior. Si editas mientras la IA trabaja, la comprobación utiliza la versión enviada para detectar conflictos.
 
-| Herramienta | Uso |
-|---|---|
-| **Seleccionar** | Clic para seleccionar; arrastrar entidades para moverlas |
-| **Entidad** | Clic en el lienzo para crear una entidad |
-| **Relación** | Dos clics: origen y destino (clic sobre la misma entidad para cancelar) |
-| **Nota** | Clic en el lienzo para crear una nota libre |
+## 8. Proveedores, credenciales y privacidad
 
-Lienzo: **rueda** para zoom, **clic izquierdo en vacío** para paneo, **clic central** también panea.
+Abre **Modelo / IA** o Modelo → Configuración de proveedor.
 
-Atajos de teclado:
+1. Selecciona proveedor y URL base. Para Ollama suele ser `http://127.0.0.1:11434`.
+2. Introduce la credencial si corresponde y pulsa **Conectar** o **Probar conexión**.
+3. Tras conectar, usa Buscar modelos y selecciona uno del catálogo. La elección se guarda y establece el proveedor/modelo activo.
 
-| Atajo | Acción |
-|---|---|
-| `Ctrl+N` | Proyecto nuevo |
-| `Ctrl+O` | Abrir proyecto |
-| `Ctrl+S` | Guardar |
-| `Ctrl+Shift+S` | Guardar como |
-| `Ctrl+Z` / `Ctrl+Y` | Deshacer / Rehacer |
-| `Ctrl+R` | Solicitar revisión IA |
-| `Supr` / `Delete` | Eliminar selección |
-| `Esc` | Cancelar selección u origen de relación |
+Perfiles separados conservan URL, credencial y último modelo. Con una clave guardada, dejar el campo vacío la conserva; escribir una nueva la reemplaza. **Revelar/Ocultar** controla su visibilidad y **Borrar credencial** elimina la credencial de ese proveedor.
 
----
+El almacén usa `safeStorage`. Si el cifrado no está disponible, no se guarda una clave nueva. Las claves no forman parte de proyectos ni exportaciones. Los perfiles, ajustes y consumo son datos de la aplicación, separados del modelo.
 
-## 6. Configuración de IA
+**Solo local** bloquea proveedores remotos y permite revisión/chat de Ollama en direcciones del propio equipo. No significa que solo se pueda ejecutar la validación determinista. Para API remotas debe estar desactivado.
 
-Menú *Modelo → Configuración de proveedor…* (o botón *Modelo / IA*):
+Disponibles: Ollama; OpenAI; Anthropic, Gemini, xAI y OpenRouter mediante las capas compatibles configuradas; endpoint personalizado compatible con OpenAI. Las capacidades reales, acceso al modelo y cuotas dependen del servicio y cuenta.
 
-- **Modo Solo local** (activado por defecto): no se realiza ninguna conexión remota; la revisión se basa únicamente en validación local determinista.
-- **Ollama (local)**: URL por defecto `http://127.0.0.1:11434`; modelo ej. `qwen2.5vl` (visión) o `llama3.2`.
-- **API remotas compatibles con OpenAI**: se preconfiguran OpenAI, Anthropic (Claude, vía su capa de compatibilidad con OpenAI), Google (Gemini, vía su endpoint compatible), xAI (Grok), OpenRouter (agregador de modelos) y un modo *personalizado* para cualquier endpoint compatible (DeepSeek, Mistral, Groq, Together, vLLM, LiteLLM, LM Studio…). La clave API se guarda cifrada con `safeStorage` del sistema operativo (nunca en texto plano ni en el proyecto).
-- Selecciona un proveedor, introduce su URL y credencial, y pulsa **Conectar**. Tras una conexión exitosa se habilita el catálogo de modelos con búsqueda; selecciona uno para guardarlo. Cada proveedor conserva su URL, credencial y último modelo por separado.
-- La lista de modelos confirma acceso al catálogo, pero no garantiza permisos de generación para todos los modelos. Si una revisión falla por modelo no disponible, vuelve a seleccionar uno accesible para tu cuenta.
+Al usar IA remota se envía contexto del modelo. No introduzcas secretos en nombres, reglas o mensajes que vayas a compartir con un proveedor.
 
-### Consumo de tokens
+## 9. Chat y consumo
 
-Pestaña *Consumo* en el panel derecho:
+El chat usa el contexto del diseño; Discutir añade la propuesta como contexto. **Enter** envía; **Shift+Enter** añade una línea. Los bloques estructurados de una respuesta no son cambios aplicados. El borrador sin enviar es temporal; los mensajes se guardan con el proyecto y quedan fuera de Deshacer/Rehacer del diseño.
 
-- Muestra peticiones y tokens (entrada/salida) del día de hoy, desglose por proveedor y modelo, e historial de días anteriores.
-- El **límite diario** es orientativo: lo configuras tú según el cupo que te asigne cada proveedor gratuito; la aplicación avisa al acercarte o superarlo. El historial se guarda en `<userData>/consumo/uso.json`.
-- Los tokens se registran a partir del campo `usage` de la respuesta; si el proveedor no lo informa, se estiman (~1 token cada 4 caracteres) y se marcan como *≈ estimado*.
+Consumo muestra peticiones, entrada/salida, proveedor/modelo y días anteriores. El límite diario es orientativo, no una sincronización de la cuota del proveedor. Si no hay uso real informado, se estiman tokens y se señala. Actualizar consulta el registro local; gestionar ese registro no modifica la facturación del servicio.
 
-La IA solo habla por los canales IPC `ia:*`: recibe el modelo normalizado y devuelve JSON con operaciones del catálogo cerrado; cualquier operación fuera de catálogo o repetida se filtra y se muestra como advertencia.
+## 10. Exportar y entregar
 
----
+Abre **Archivo → Exportar**. El diálogo toma una instantánea al abrirse, incluidos cambios sin guardar. Puedes elegir diseño completo, selección o una propuesta en comparación no aplicada. Seleccionar una relación incluye sus dos extremos.
 
-## 7. Archivos y recuperación
+| Formato | Uso | Advertencias |
+| --- | --- | --- |
+| Markdown | Reporte de lógica y pendientes. | No genera SQL ni reglas confirmadas a partir de supuestos. |
+| JSON | Modelo documental estructurado. | No es `.vbdproj` ni un esquema ejecutable de motor/ORM. |
+| Markdown + JSON | Ambos archivos en una carpeta nueva. | El destino se elige mediante diálogo. |
+| SVG | Diagrama vectorial. | No conserva toda la semántica del reporte. |
+| PNG | Imagen 1× o 2×. | Puede usarse fondo claro, oscuro o transparente. |
+| Mermaid ER | Texto `.mmd`. | Revisa advertencias: omisiones por cardinalidad desconocida y propiedades no representadas. |
+| draw.io | Diagrama editable. | Reimportar no conserva todas las reglas, tipos, claves y restricciones. |
 
-- **Proyecto**: extensión `.vbdproj` (JSON con `formatoVersion`, `proyecto`, `historial` y `mensajesChat` opcional para compatibilidad). El guardado es atómico (archivo temporal + renombrado).
-- **Recuperación automática**: copia de seguridad en `<userData>/recuperacion` (se escribe con debounce ~3 s). Al arrancar con copia disponible se ofrece restaurarla (menú *Proyecto → Información de recuperación*).
-- **Credenciales**: `<userData>/credenciales`; **ajustes IA**: `<userData>/ajustes`.
-- Rutas de `userData` según plataforma: Windows `%APPDATA%/<nombre-app>`, macOS `~/Library/Application Support/<nombre-app>`, Linux `~/.config/<nombre-app>`.
+Markdown/JSON permiten notas, revisión local y anexo de propuestas según opciones disponibles. Las propuestas anexadas no se convierten en reglas confirmadas. En salidas parciales o propuestas se conserva su advertencia de contexto.
 
----
+Las exportaciones omiten chat, credenciales, perfiles, rutas de importación e historial; no consultan IA. Para continuar editando usa `.vbdproj`; para comunicar la lógica combina diagrama y Markdown/JSON. Otra herramienta o agente puede utilizar ese reporte, pero Visual BD no ejecuta la implementación resultante.
 
-## 8. Estructura del proyecto
+## 11. Atajos
 
-```
-src/
-├── main/                  # Proceso principal de Electron
-│   ├── index.ts           # Ventana, menú nativo, IPC
-│   ├── persistencia.ts    # Guardado atómico, recuperación, .vbdproj
-│   ├── almacen-credenciales.ts
-│   ├── ia/                # adaptador, ollama, openai, coordinador (solo-local, reintentos, filtros)
-│   └── importadores/      # draw.io (zlib) + clasificación determinista
-├── preload/index.ts       # Puente seguro window.api (contextBridge)
-├── shared/ai.ts           # Contratos IPC/IA compartidos
-└── renderer/src/
-    ├── domain/            # Núcleo: modelo, operaciones, historial, propuestas,
-    │                      # aprobación, validación, normalización (+ pruebas)
-    ├── importadores/      # borrador (drawio/imagen/MD → Proyecto), markdown
-    ├── estado/tienda.tsx  # Store global React (orquestación completa)
-    └── componentes/       # Cabecera, Herramientas, Lienzo (SVG), paneles, diálogos
-```
+| Atajo en Windows/Linux | Acción |
+| --- | --- |
+| Ctrl+N / Ctrl+O | Nuevo / Abrir. |
+| Ctrl+S / Ctrl+Shift+S | Guardar / Guardar como. |
+| Ctrl+Z / Ctrl+Y | Deshacer / Rehacer en Actual. |
+| Ctrl+R | Revisar con IA. |
+| Ctrl+Shift+R | Recargar el renderer; es una acción de desarrollo, no revisión. |
+| Supr / Delete | Eliminar selección, fuera de campos de texto. |
+| Escape | Cancelar herramienta/origen o cerrar panel según el contexto. |
+| Enter en nombre | Confirmar el nombre y volver a bloquearlo. |
+| Enter / Shift+Enter en chat | Enviar / nueva línea. |
 
-Principios arquitectónicos (ver `plan-aplicacion-visual-bases-de-datos.md`):
+El menú nativo usa CmdOrCtrl: en macOS se esperan los equivalentes con Cmd, pendientes de comprobación completa en ese sistema.
 
-- El modelo de dominio es la única fuente de verdad; el lienzo SVG no guarda estado.
-- Catálogo **cerrado** de operaciones con `aplicar` + `invertir` (deshacer siempre posible).
-- La IA propone; aprueba/rechaza solo el usuario. Aplicación atómica.
-- Identificadores de dominio en español (`Entidad`, `Atributo`, `Operacion`…); UI en español.
+## 12. Problemas frecuentes
 
----
+| Síntoma | Qué revisar |
+| --- | --- |
+| Conecta, pero no genera | Acceso de la cuenta a ese modelo; volver a seleccionar uno disponible. |
+| Error de autenticación | Credencial, proveedor y permisos; no revelar la clave en capturas o logs. |
+| 404 | Ruta base y disponibilidad del modelo; conectar al catálogo no garantiza generación. |
+| 429 / 503 | Límite de tasa o disponibilidad; evitar reintentar repetidamente sin revisar el estado. |
+| Timeout | Complejidad del caso, modelo y servicio. El timeout no demuestra una clave inválida. |
+| No puedo editar | Comprueba si estás en Propuesto o si el nombre necesita el lápiz. |
+| Propuesta desactualizada | Leer motivos y pedir otra revisión; no omitir la comprobación de huellas. |
+| No veo todo el diagrama | Ajustar al contenido en la barra; cerrar el panel si oculta parte del lienzo. |
+| Mi exportación no contiene todo | Alcance elegido y limitaciones del formato; consultar Markdown/JSON. |
 
-## 9. Pruebas
+## 13. Archivos y arquitectura
 
-```bash
-npm run test
+- `src/main/`: ventana, menús, IPC, disco, recuperación, proveedores e importador draw.io.
+- `src/preload/index.ts`: puente `window.api`.
+- `src/shared/`: contratos IA y exportación.
+- `src/renderer/src/domain/`: modelo, operaciones, historial, aprobación, comparación, validación y normalización.
+- `src/renderer/src/estado/`: store y comportamiento de interfaz/proveedores.
+- `src/renderer/src/exportadores/`: alcance, instantánea y formatos.
+- `tests/integracion/`: recorridos de dominio/disco y ensayo local optativo.
+- `tests/fixtures/`: entradas sintéticas versionadas.
+- `artefactos-locales/pruebas/`: salidas de ejecución conservadas localmente, ignoradas por Git.
+- `documentacion/guia/`: sitio estático, sin librerías ni llamadas a la aplicación.
+
+`<userData>/recuperacion`, `/credenciales`, `/ajustes` y `/consumo` son carpetas de datos de Electron. Su raíz depende del OS y nombre de aplicación: normalmente APPDATA en Windows, Application Support en macOS y .config en Linux. El lienzo mantiene cámara y arrastre transitorios; la fuente de verdad estructural es el dominio.
+
+## 14. Pruebas, evidencia y límites
+
+Antes de entregar cambios: `npm test`, `npm run typecheck` y `npm run build`.
+
+La regresión registrada aprobó **99 pruebas deterministas en 22 archivos**, con un ensayo real de Ollama omitido en la ejecución normal. Ese ensayo se ejecutó por separado y pasó con Mistral y un caso reducido. Son resultados de esa sesión; no se han repetido por actualizar estos textos.
+
+Para repetir el ensayo local de forma explícita en PowerShell:
+
+```powershell
+$env:VISUAL_BD_QA_LOCAL='1'
+node node_modules/vitest/vitest.mjs run tests/integracion/ollama-real.test.ts
+Remove-Item Env:VISUAL_BD_QA_LOCAL
 ```
 
-Última verificación de esta etapa: **60 pruebas en 15 archivos**, comprobación de tipos y compilación de producción correctas. Incluye dominio, importadores, transporte y proveedores IA, credenciales, consumo, límites de posición del panel flotante, lectura de conversaciones y persistencia/recuperación por proyecto. Las pruebas de proveedores remotos usan simulaciones.
+Requiere Ollama en el puerto y modelo indicados en el ensayo; efectúa una llamada real y escribe `ollama-revision-real.json` en `artefactos-locales/pruebas/<fecha-local>/`, ignorada por Git. Las pruebas normales de transporte/proveedores usan simulaciones. La integración dominio/disco no es un E2E completo de UI.
 
-## Identidad visual y distribución
+Consulta [el informe de correcciones](pruebas/2026-10-18/informe-correcciones-revision.md) y [los pendientes detallados](pruebas/2026-10-18/resumen-sesion-y-pendientes.md). Siguen pendientes verificaciones de concurrencia por IPC/UI, operaciones combinadas, revisión completa local/remota, accesibilidad y tema claro de la app, diagramas grandes, herramientas externas y macOS/Linux.
 
-El icono aprobado es el **concepto C**, un cilindro de base de datos conectado a una tabla. Los originales y derivados PNG/ICO/ICNS están en `resources/`; los favicon de 16 y 32 px y el ICO están en `src/renderer/public/`. Véase [origen y prompt](../resources/README.md).
-
-Electron usa el PNG como icono de ventana y del Dock de macOS. `package.json` configura los formatos de icono para el empaquetado futuro. Reinicia Electron para ver cambios en el icono; el navegador puede conservar el favicon en caché.
-
-El ejecutador simplificado y la distribución de instaladores por Windows, macOS y Linux están pendientes; no se han generado ni publicado en esta etapa. La integración visual nativa en macOS y Linux requiere comprobación en esos sistemas.
-
----
-
-## 10. Limitaciones conocidas
-
-- No genera SQL ni DDL (alcance deliberado del MVP).
-- La imagen original importada se muestra como referencia en la sesión pero no se persiste dentro del `.vbdproj`.
-- El historial de deshacer/rehacer se conserva al reabrir el proyecto, pero no hay «viajar» a estados antiguos para editarlos.
-- La interpretación de imágenes depende de un proveedor con visión; en modo Solo local ese flujo no está disponible.
+No hay comparación histórica de propuestas aplicadas, ejecución SQL/DDL, generación ORM/NoSQL ni instaladores publicados. El icono de la app es el concepto C; sus recursos y procedencia están en [resources/README.md](../resources/README.md).

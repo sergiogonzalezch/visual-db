@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Guía visual de Visual BD: del primer proyecto a un modelo revisado y exportable."><title>Visual BD · Del modelo a la decisión</title><link rel="icon" type="image/png" href="icono.png"><link rel="stylesheet" href="estilos.css"><script src="catalogo.js" defer></script><script src="guia.js" defer></script></head>
+<body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+<header class="barra"><a class="marca" href="index.html" aria-label="Visual BD, guía de inicio"><img class="simbolo" src="icono.png" width="24" height="24" alt="">Visual BD<span class="separador">/</span><span class="muted">Guía</span></a><nav aria-label="Principal"><a href="#recorrido">Recorrido</a><a href="#mapa">Funciones</a><a href="tecnica.html">Referencia técnica ↗</a><button class="tema" type="button" aria-label="Cambiar tema" title="Cambiar entre claro y oscuro">◐</button></nav></header>
+<main id="contenido">
+<section class="hero contenedor">
+  <div class="eyebrow"><span class="punto"></span> DISEÑA · COMPRENDE · DECIDE</div>
+  <h1>Tu base de datos.<br><span>Antes de escribir código.</span></h1>
+  <p class="intro">Convierte una idea en un modelo que puedas explicar.<br class="solo-ancho"> Revisa su lógica, contrasta propuestas y comparte el resultado.</p>
+  <div class="botones"><a class="boton primario" href="#recorrido">Recorrer el flujo <span aria-hidden="true">↓</span></a><a class="boton" href="tecnica.html">Consultar documentación ↗</a></div>
+  <div class="principios"><span>01 · El modelo es la fuente de verdad</span><span>02 · La IA propone</span><span>03 · Tú apruebas</span></div>
+</section>
+<section class="contenedor recorrido" id="recorrido" aria-labelledby="titulo-recorrido">
+  <div class="titulo-seccion"><div><p class="eyebrow">EL FLUJO, PASO A PASO</p><h2 id="titulo-recorrido">De la primera entidad<br>a una entrega clara.</h2></div><p>Un recorrido ilustrativo, sin conexión a proveedores ni acceso a tus proyectos.</p></div>
+  <div class="pasos" aria-label="Elegir paso del recorrido" id="pasos"></div>
+  <div class="laboratorio">
+    <section class="instruccion"><span class="contador" id="contador">PASO 01 / 07</span><h3 id="paso-titulo">Dale nombre a tu proyecto</h3><p class="frase" id="paso-verbo">Empieza con un propósito.</p><p id="paso-texto">Abre un proyecto o empieza desde cero. Usa el lápiz de la cabecera para editar su nombre.</p><div class="ruta"><span>DÓNDE ESTÁ</span><p id="paso-ruta">Archivo → Nuevo proyecto</p></div><div class="tarea"><span>PRUÉBALO EN LA APP</span><p id="paso-tarea">Guarda una primera copia .vbdproj.</p></div><div id="paso-enlaces" class="enlaces-paso"></div><div class="controles-recorrido"><button id="anterior" type="button" aria-label="Paso anterior">←</button><button id="reproducir" type="button" aria-pressed="false">Reproducir recorrido</button><button id="siguiente" type="button" aria-label="Paso siguiente">→</button></div><p class="micro" id="estado-recorrido" role="status" aria-live="polite">Avanza a tu ritmo. Las animaciones son opcionales.</p></section>
+    <div class="simulacion" id="simulacion" data-paso="0" aria-label="Ilustración del editor, no es la aplicación">
+      <div class="mini-cabecera"><span><b>Visual BD</b> / Tienda de pedidos</span><span class="mini-badge">Ilustración</span></div>
+      <div class="mini-lienzo">
+        <div class="mini-herramientas" aria-hidden="true"><span>⠿</span><span class="activo">↖</span><span>⊞</span><span>⑂</span><span>▱</span></div><span class="mini-vista" id="mini-vista">Actual</span>
+        <svg class="conexion" viewBox="0 0 600 370" preserveAspectRatio="none" aria-hidden="true"><path d="M230 190H370"/><text x="252" y="178">1</text><text x="330" y="178">0..n</text></svg>
+        <article class="mini-entidad cliente"><header>Cliente <span>01</span></header><p>cliente_id <em>PK</em></p><p>nombre</p><p>email <i>?</i></p></article>
+        <article class="mini-entidad pedido"><header>Pedido <span>02</span></header><p>pedido_id <em>PK</em></p><p>cliente_id <em>FK</em></p><p>total <i id="marca-total">?</i></p></article>
+        <div class="tarjeta-demo" id="tarjeta-demo"><span class="indicador-demo"></span><div><strong id="demo-titulo">Proyecto preparado</strong><p id="demo-detalle">Tienda de pedidos · nombre confirmado</p></div></div>
+      </div><div class="mini-pie"><span id="demo-estado">Sin ruta de guardado</span><span>MODELO → DECISIÓN</span></div>
+    </div>
+  </div>
+</section>
+<section class="contenedor" id="mapa" aria-labelledby="titulo-mapa"><div class="titulo-seccion"><div><p class="eyebrow">MAPA DE LA APLICACIÓN</p><h2 id="titulo-mapa">Encuentra lo que necesitas.</h2></div><p>Cada función incluye su ubicación, resultado y límites en la referencia técnica.</p></div><div class="buscador"><label for="buscar">Buscar funciones</label><input type="search" id="buscar" placeholder="Prueba: clave foránea, guardar, Mermaid…" autocomplete="off"><div class="filtros" id="filtros" aria-label="Filtrar por área"></div><p id="conteo" class="micro" role="status" aria-live="polite"></p></div><div class="mapa-grid" id="funciones"></div><p id="sin-resultados" class="sin-resultados" hidden>No encontramos coincidencias. Prueba otra palabra o selecciona Todas.</p><noscript><p>Para el mapa filtrable y el recorrido interactivo, activa JavaScript. También puedes leer las <a href="../INSTRUCCIONES.md">instrucciones completas en Markdown</a>.</p></noscript></section>
+<section class="contenedor cierre"><p class="eyebrow">UN ARCHIVO PARA CADA PROPÓSITO</p><h2>Conserva el proyecto.<br>Comparte el conocimiento.</h2><div class="entregas"><article><span class="extension">.vbdproj</span><h3>Seguir trabajando</h3><p>Modelo editable, historial y chat del proyecto. Las credenciales se guardan aparte.</p></article><article><span class="extension">.md + .json</span><h3>Explicar la lógica</h3><p>Reglas, claves, contexto y pendientes para otra herramienta o agente. Sin generar SQL, ORM o NoSQL.</p></article><article><span class="extension">.svg · .png · .mmd · .drawio</span><h3>Mostrar el diseño</h3><p>Comunica la estructura. Acompáñala del reporte para conservar la semántica que no cabe en un diagrama.</p></article></div><a class="enlace-grande" href="tecnica.html#exportacion">Revisar contratos y limitaciones <span>↗</span></a></section>
+</main><footer class="contenedor pie"><a class="marca" href="index.html">Visual BD</a><p>Guía estática · Sin telemetría, dependencias remotas ni acceso a credenciales.</p><a href="../INSTRUCCIONES.md">Instrucciones Markdown ↗</a></footer>
+</body></html>

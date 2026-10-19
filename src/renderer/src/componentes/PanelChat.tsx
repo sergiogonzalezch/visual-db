@@ -20,7 +20,7 @@ export function PanelChat(): JSX.Element {
       <div ref={mensajesRef} className="mensajes-chat" role="log" aria-label="Conversación con el asistente">
         {tienda.mensajesChat.map((mensaje, i) => (
           <div key={i} className={`mensaje ${mensaje.rol}`}>
-            {mensaje.contenido}
+            {mensaje.rol === 'sistema' ? mensaje.contenido.replace(/Error invoking remote method '[^']+':\s*(?:Error:\s*)?/g, '') : mensaje.rol === 'asistente' && mensaje.contenido.includes('<propuestas>') ? <>{mensaje.contenido.split('<propuestas>')[0]}<details><summary>Contenido estructurado del modelo · no aplicado</summary><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{mensaje.contenido.slice(mensaje.contenido.indexOf('<propuestas>'))}</pre></details></> : mensaje.contenido}
             {mensaje.propuestaId && (
               <div className="chips" style={{ marginTop: 4 }}>
                 <span className="chip">referencia a propuesta</span>
@@ -29,7 +29,7 @@ export function PanelChat(): JSX.Element {
           </div>
         ))}
         {tienda.estadoIA.error && (
-          <div className="mensaje sistema" role="alert">Error: {mensajeErrorVisible(tienda.estadoIA.error)}</div>
+          <div className="mensaje sistema" role="alert"><span className="solo-lectores">{mensajeErrorVisible(tienda.estadoIA.error)}</span><button disabled={tienda.estadoIA.chateando || !tienda.mensajesChat.some(m => m.rol === 'usuario')} onClick={() => { const ultimo = [...tienda.mensajesChat].reverse().find(m => m.rol === 'usuario'); if (ultimo) void tienda.chatear(ultimo.contenido) }}>Reintentar último mensaje</button></div>
         )}
       </div>
       <div className="entrada-chat" style={{ marginTop: 'auto' }}>

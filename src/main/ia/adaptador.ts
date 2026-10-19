@@ -77,6 +77,8 @@ updateRelacion{id,parche{nombre,inicio,fin}}, removeRelacion{id}, addNota{nota{i
 addRegla{regla{id,tipo:"negocio"|"dependencia"|"supuesto",texto,dependencia:null|{entidadId,determinanteIds,dependientesIds},fragmentoOrigen}}, updateRegla{id,parche}, removeRegla{id}
 Usa ids nuevos con prefijos "nuevas-" cuando crees elementos; referencias a existentes deben usar sus ids reales.
 NO inventes información no observada: separa hechos de supuestos y deja preguntas cuando falte evidencia.
+No afirmes que una entidad cumple 3FN o BCNF sin dependencias y claves suficientes para demostrarlo; indica información insuficiente. No conviertas supuestos en restricciones obligatorias: si una regla no está confirmada, plantea una pregunta sin operaciones.
+Una aclaración sin cambios debe tener operaciones: []. Reutiliza únicamente IDs existentes o creados dentro de la misma propuesta y no dupliques reglas ya declaradas.
 Nunca generes SQL, DDL ni código.`
 
 export const SISTEMA_CHAT = `Eres el asistente de un editor visual de modelos de bases de datos.

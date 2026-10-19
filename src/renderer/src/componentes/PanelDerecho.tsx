@@ -39,12 +39,12 @@ export function PanelDerecho(): JSX.Element {
     <aside ref={panel} id="panel-proyecto" className="panel-derecho" aria-label="Inspector del proyecto" aria-hidden={!panelAbierto}>
       <header className="cabecera-inspector"><strong>Panel del proyecto</strong><button type="button" aria-label="Cerrar panel del proyecto" title="Cerrar panel · Esc" onClick={cerrar}><Icono nombre="cerrar" /></button></header>
       <Pestanas id="inspector" etiqueta="Paneles del proyecto" opciones={opciones} valor={tienda.pestana} cambiar={tienda.setPestana} />
-      <div className={`contenido-panel panel-${tienda.pestana}`} role="tabpanel" id={`inspector-panel-${tienda.pestana}`} aria-labelledby={`inspector-tab-${tienda.pestana}`} tabIndex={0}>
-        {tienda.pestana === 'propiedades' && <PanelPropiedades />}
-        {tienda.pestana === 'revision' && <PanelRevision />}
-        {tienda.pestana === 'chat' && <PanelChat />}
-        {tienda.pestana === 'consumo' && <PanelConsumo />}
-      </div>
+      {opciones.map(opcion => <div key={`${tienda.proyecto.id}-${opcion.valor}`} hidden={tienda.pestana !== opcion.valor} className={`contenido-panel panel-${opcion.valor}`} role="tabpanel" id={`inspector-panel-${opcion.valor}`} aria-labelledby={`inspector-tab-${opcion.valor}`} tabIndex={0}>
+        {opcion.valor === 'propiedades' && <PanelPropiedades />}
+        {opcion.valor === 'revision' && <PanelRevision />}
+        {opcion.valor === 'chat' && <PanelChat />}
+        {opcion.valor === 'consumo' && <PanelConsumo />}
+      </div>)}
     </aside>
   </div>
 }

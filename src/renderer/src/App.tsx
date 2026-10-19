@@ -1,4 +1,7 @@
 import { useTienda } from './estado/tienda'
+import { useEffect, useState } from 'react'
+import { api } from './ipc'
+import { DialogoExportacion } from './componentes/DialogoExportacion'
 import { Cabecera } from './componentes/Cabecera'
 import { ControlesVista, Herramientas } from './componentes/Herramientas'
 import { Lienzo } from './componentes/Lienzo'
@@ -11,10 +14,12 @@ import { DialogoRecuperacion } from './componentes/DialogoRecuperacion'
 
 export function App(): JSX.Element {
   const tienda = useTienda()
+  const [exportacionAbierta, setExportacionAbierta] = useState(false)
+  useEffect(() => api().onMenu('menu:exportar', () => setExportacionAbierta(true)), [])
 
   return (
     <div className="aplicacion">
-      <Cabecera />
+      <Cabecera exportar={() => setExportacionAbierta(true)} />
       <div className="cuerpo">
         <main className="zona-trabajo" aria-label="Editor del modelo">
           <div className="zona-lienzo">
@@ -39,12 +44,13 @@ export function App(): JSX.Element {
       {tienda.mostrarConfiguracion && <DialogoConfiguracion />}
       {tienda.mostrarHistorial && <DialogoHistorial />}
       {tienda.recuperacionPendiente && <DialogoRecuperacion />}
+      {exportacionAbierta && <DialogoExportacion proyecto={tienda.proyecto} seleccion={tienda.seleccion} propuestaId={tienda.propuestaEnComparacion} cerrar={() => setExportacionAbierta(false)} />}
       {tienda.aviso && (
         <div
-          className="aviso-flotante"
-          role="status"
+          className={`aviso-flotante ${/error|no se pudo|fallo/i.test(tienda.aviso) ? 'error' : 'info'}`}
+          role={/error|no se pudo|fallo/i.test(tienda.aviso) ? 'alert' : 'status'}
         >
-          <span>{tienda.aviso}</span>
+          <div className="aviso-contenido">{tienda.aviso.length > 240 ? <><strong>{tienda.aviso.split(':')[0]}</strong><details><summary>Ver detalles</summary><p>{tienda.aviso}</p></details></> : <span>{tienda.aviso}</span>}</div>
           <button onClick={() => tienda.setAviso(null)}>Cerrar</button>
         </div>
       )}

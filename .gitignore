@@ -6,3 +6,14 @@ release/
 
 Thumbs.db
 .DS_Store
+
+# Salidas locales de QA: proyectos, exportaciones, logs y capturas.
+/artefactos-locales/
+/.prueba-*.vbdproj
+/.test-*/
+/documentacion/guia/capturas/
+
+# La documentación de pruebas se versiona en Markdown; las evidencias generadas no.
+/documentacion/pruebas/**
+!/documentacion/pruebas/**/
+!/documentacion/pruebas/**/*.md

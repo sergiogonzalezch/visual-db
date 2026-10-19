@@ -64,13 +64,13 @@ export interface ConversionBorrador {
 function minimoDe(cadena: string | null): Desconocible<0 | 1> {
   if (!cadena) return DESCONOCIDO
   if (cadena.startsWith('0')) return 0
-  if (cadena === '1') return 1
+  if (cadena.startsWith('1')) return 1
   return DESCONOCIDO
 }
 
 function maximoDe(cadena: string | null): Desconocible<1 | 'n'> {
   if (!cadena) return DESCONOCIDO
-  if (/^n|^\*|m/i.test(cadena)) return 'n'
+  if (/n|\*|m/i.test(cadena)) return 'n'
   if (cadena.includes('1')) return 1
   return DESCONOCIDO
 }
@@ -106,9 +106,14 @@ export function borradorAProyecto(borrador: BorradorProyecto, nombreProyecto: st
       const atributo = crearAtributo(borradorAtributo.nombre || 'atributo')
       entidad.atributos.push(atributo)
       if (borradorAtributo.clave === 'primaria') {
+        const primaria = entidad.claves.find(c => c.tipo === 'primaria')
+        if (primaria) {
+          primaria.atributoIds.push(atributo.id)
+          continue
+        }
         entidad.claves.push({
           id: nuevoId('k'),
-          nombre: `pk_${atributo.nombre}`,
+          nombre: `pk_${entidad.nombre}`,
           tipo: 'primaria',
           atributoIds: [atributo.id],
           foranea: null
@@ -131,8 +136,7 @@ export function borradorAProyecto(borrador: BorradorProyecto, nombreProyecto: st
     const limpio = nombre.trim().toLowerCase()
     const coincide = entidadesCreadas.find((e) => e.nombre === limpio)
     if (coincide) return coincide.id
-    const parcial = entidadesCreadas.find((e) => e.nombre.includes(limpio) || limpio.includes(e.nombre))
-    return parcial?.id ?? null
+    return null
   }
 
   borrador.relaciones.forEach((borradorRelacion, indice) => {

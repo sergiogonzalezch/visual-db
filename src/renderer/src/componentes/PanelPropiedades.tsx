@@ -1,3 +1,5 @@
+import { PropiedadesPropuestas } from './PropiedadesPropuestas'
+import { crearForanea } from '../domain/clave-foranea'
 import { useId, useState } from 'react'
 import {
   DESCONOCIDO,
@@ -65,6 +67,11 @@ export function PanelPropiedades(): JSX.Element {
   const [textoRegla, setTextoRegla] = useState('')
   const [atributoCandidatoIds, setAtributoCandidatoIds] = useState<string[]>([])
 
+  if (tienda.vista === 'propuesto') {
+    return <PropiedadesPropuestas proyecto={proyecto} seleccion={seleccion} propuestaId={tienda.propuestaEnComparacion}
+      volver={() => { tienda.setVista('actual'); tienda.setPropuestaEnComparacion(null) }} />
+  }
+
   if (!seleccion) {
     return (
       <div>
@@ -101,7 +108,7 @@ export function PanelPropiedades(): JSX.Element {
         </button>
         <h3>Información desconocida</h3>
         {proyecto.desconocidos.length === 0 ? (
-          <p className="vacio">Sin elementos desconocidos registrados.</p>
+          <p className="vacio">Sin desconocidos registrados en la importación. «Revisar reglas» detecta también los campos del diseño aún sin completar.</p>
         ) : (
           <ul style={{ paddingLeft: 18 }}>
             {proyecto.desconocidos.map((desconocido, i) => (
@@ -246,21 +253,11 @@ export function PanelPropiedades(): JSX.Element {
         </div>
         <button
           onClick={() => {
-            const claveForanea = {
-              id: nuevoId('k'),
-              nombre: `fk_${nombreEntidad(relacion.fin.entidadId).toLowerCase()}`,
-              tipo: 'foranea' as const,
-              atributoIds: [],
-              foranea: {
-                entidadDestinoId: relacion.inicio.entidadId,
-                claveDestinoIds: [],
-                relacionId: relacion.id
-              }
-            }
-            tienda.aplicar(
-              [{ op: 'addClave', entidadId: relacion.fin.entidadId, clave: claveForanea }],
-              { etiqueta: 'Crear clave foránea desde la relación' }
-            )
+            try {
+              const origen = proyecto.diseno.entidades.find(e => e.id === relacion.fin.entidadId)!
+              const destino = proyecto.diseno.entidades.find(e => e.id === relacion.inicio.entidadId)!
+              tienda.aplicar(crearForanea(origen, destino, undefined, relacion.id), { etiqueta: 'Crear clave foránea desde la relación' })
+            } catch (error) { tienda.setAviso((error as Error).message) }
           }}
         >
           Crear clave foránea en «{nombreEntidad(relacion.fin.entidadId)}»
@@ -569,7 +566,7 @@ export function PanelPropiedades(): JSX.Element {
           </select>
           <select value={fkClaveDestino} onChange={(e) => setFkClaveDestino(e.target.value)} disabled={!fkEntidadDestino}>
             <option value="">Clave destino…</option>
-            {(proyecto.diseno.entidades.find((e) => e.id === fkEntidadDestino)?.claves ?? []).map((c) => (
+            {(proyecto.diseno.entidades.find((e) => e.id === fkEntidadDestino)?.claves ?? []).filter(c => c.tipo !== 'foranea' && c.atributoIds.length > 0).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre || c.tipo}
               </option>
@@ -577,21 +574,12 @@ export function PanelPropiedades(): JSX.Element {
           </select>
           <button
             className="auto"
-            disabled={!fkEntidadDestino}
+            disabled={!fkEntidadDestino || !fkClaveDestino}
             onClick={() => {
               const destino = proyecto.diseno.entidades.find((e) => e.id === fkEntidadDestino)
-              const clave = {
-                id: nuevoId('k'),
-                nombre: `fk_${destino?.nombre.toLowerCase() ?? 'destino'}`,
-                tipo: 'foranea' as const,
-                atributoIds: [],
-                foranea: {
-                  entidadDestinoId: fkEntidadDestino,
-                  claveDestinoIds: fkClaveDestino ? [fkClaveDestino] : [],
-                  relacionId: null
-                }
-              }
-              tienda.aplicar([{ op: 'addClave', entidadId: entidad.id, clave }])
+              if (!destino) return
+              try { tienda.aplicar(crearForanea(entidad, destino, fkClaveDestino), { etiqueta: 'Crear clave foránea' }) }
+              catch (error) { tienda.setAviso((error as Error).message); return }
               setFkEntidadDestino('')
               setFkClaveDestino('')
             }}

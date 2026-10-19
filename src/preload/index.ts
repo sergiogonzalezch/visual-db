@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { ResultadoExportacion, SolicitudExportacion } from '../shared/exportacion'
 import type {
   BorradorImportacionIA,
   CapacidadesProveedor,
@@ -14,6 +15,9 @@ import type {
 import type { ConfigProveedor, ConexionProveedor, ProveedorTipo } from '../shared/ai'
 
 const api = {
+  versionAplicacion: (): Promise<string> => ipcRenderer.invoke('exportacion:version'),
+  exportarArchivos: (solicitud: SolicitudExportacion): Promise<ResultadoExportacion> => ipcRenderer.invoke('exportacion:guardar', solicitud),
+  abrirCarpetaExportacion: (): Promise<string> => ipcRenderer.invoke('exportacion:abrir-carpeta'),
   onProveedores: (callback: () => void): (() => void) => {
     ipcRenderer.on('proveedores:actualizados', callback)
     return () => ipcRenderer.removeListener('proveedores:actualizados', callback)

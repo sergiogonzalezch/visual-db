@@ -314,6 +314,11 @@ export function analizarNormalizacion(proyecto: Proyecto): ResultadoNormalizacio
     }
   }
 
+  const orden: NivelNormalizacion[] = ['1FN', '2FN', '3FN', 'BCNF']
+  for (let i = 1; i < orden.length; i++) {
+    if (estados[orden[i - 1]] !== 'verificado' && estados[orden[i]] === 'verificado') estados[orden[i]] = 'informacion-insuficiente'
+  }
+
   return {
     niveles: (['1FN', '2FN', '3FN', 'BCNF'] as NivelNormalizacion[]).map((nivel) => ({
       nivel,

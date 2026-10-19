@@ -117,14 +117,14 @@ export function importarMarkdown(contenido: string, nombreArchivo: string): Borr
     const relacionExplicita = texto.match(/^relaci[oó]n\s*:\s*(.+?)\s+(?:1\.\.|0\.\.|\bn\b|\bN\b|\*)/i)
     if (relacionExplicita || (relacion && entidadActual === null && !texto.startsWith('-'))) {
       const fuente = texto.replace(/^relaci[oó]n\s*:\s*/i, '')
-      const partes = fuente.split(/\s*(?:→|<-|->|—|--|<|>|,)\s*|\s+\.\.\s+|\s+(?=1\.\.|0\.\.|\b[1nN]\b)/)
-      const limpias = partes.map((p) => p.replace(/\(([^)]*)\)/g, '').replace(/\s+/g, ' ').trim()).filter(Boolean)
-      if (limpias.length >= 2) {
-        const tarjeta = fuente.match(/\(([^)]+)\)/)
-        const card = parsearCardinalidad(tarjeta?.[1] ?? fuente)
+      const flecha = fuente.match(/^(.+?)\s*(?:→|<-|->|—|--|<|>)\s*(?:\(([^)]+)\)\s*)?(.+)$/)
+      const lineal = fuente.match(/^(.+?)\s+((?:[01]\.\.)?[01nN*])\s+(.+)$/)
+      const partes = flecha ?? lineal
+      if (partes) {
+        const card = parsearCardinalidad(partes[2] ?? '')
         relaciones.push({
-          origenNombre: limpias[0],
-          destinoNombre: limpias[limpias.length - 1],
+          origenNombre: partes[1].trim(),
+          destinoNombre: partes[3].trim(),
           etiqueta: null,
           cardOrigen: card.origen,
           cardDestino: card.destino

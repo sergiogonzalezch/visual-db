@@ -20,6 +20,7 @@ describe('análisis de normalización', () => {
     proyecto.diseno.entidades.push(entidad)
     const resultado = analizarNormalizacion(proyecto)
     expect(resultado.hallazgos.some((h) => h.estado === 'informacion-insuficiente')).toBe(true)
+    expect(resultado.niveles.find(n => n.nivel === '2FN')?.estado).not.toBe('verificado')
   })
 
   it('detecta posible violación de 3FN con dependencia declarada', () => {

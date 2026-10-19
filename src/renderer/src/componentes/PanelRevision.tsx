@@ -1,3 +1,5 @@
+import { ComparacionPropuesta } from './ComparacionPropuesta'
+import { comprobarPropuesta } from '../domain/propuestas'
 import { mensajeErrorVisible } from '../presentacion/errores'
 import { useState } from 'react'
 import { useTienda } from '../estado/tienda'
@@ -15,6 +17,7 @@ export function PanelRevision(): JSX.Element {
   const { proyecto } = tienda
   const [propuestaAbierta, setPropuestaAbierta] = useState<string | null>(null)
   const [discusion, setDiscusion] = useState('')
+  const [filtro, setFiltro] = useState('todos')
 
   const ambiguidadesPendientes = proyecto.revision.ambiguidades.filter((a) => !a.resolucion)
   const propuestas = proyecto.propuestas
@@ -167,17 +170,22 @@ export function PanelRevision(): JSX.Element {
 
       </section>
       <section role="tabpanel" id="revision-tipo-panel-propuestas" aria-labelledby="revision-tipo-tab-propuestas" hidden={tienda.seccionRevision !== 'propuestas'}>
-      <h3>Propuestas</h3>
-      {tienda.estadoIA.revisando && <div className="estado-contextual" role="status"><strong>Revisando con IA…</strong><p>El modelo está preparando su análisis. El diseño actual se conserva.</p></div>}
-      {tienda.estadoIA.error && <div className="estado-contextual error" role="alert"><strong>No se pudo completar la revisión</strong><p>{mensajeErrorVisible(tienda.estadoIA.error)}</p><button onClick={() => tienda.setMostrarConfiguracion(true)}>Revisar proveedor y modelo</button></div>}
+      <h3>Propuestas</h3><p className="descripcion-panel">{propuestas.filter(p => p.estado === 'pendiente').length} pendientes · {propuestas.filter(p => p.estado === 'aplicada').length} aplicadas · {propuestas.filter(p => p.estado === 'aceptada').length} aclaraciones revisadas</p><p className="descripcion-panel">Las conclusiones de IA son recomendaciones sujetas a sus supuestos. La verificación de normalización corresponde a Revisar reglas.</p>
+      {tienda.estadoIA.revisando && <div className="estado-contextual" role="status"><strong>Revisando con IA…</strong><button onClick={tienda.cancelarRevision}>Descartar respuesta pendiente</button><p>El modelo está preparando su análisis. El diseño actual se conserva.</p></div>}
+      {tienda.estadoIA.error && <div className="estado-contextual error" role="alert"><strong>No se pudo completar la revisión</strong><p>{mensajeErrorVisible(tienda.estadoIA.error)}</p><button disabled={tienda.estadoIA.revisando} onClick={() => void tienda.solicitarRevision()}>Reintentar revisión</button><button onClick={() => tienda.setMostrarConfiguracion(true)}>Revisar proveedor y modelo</button></div>}
       {propuestas.length === 0 && (
         <p className="vacio">
           Sin propuestas. Usa «Revisar → Revisar con IA» para pedirle al agente que analice el modelo; nunca modifica el
           diseño sin tu aprobación.
         </p>
       )}
-      {propuestas.map((propuesta) => {
+      <label className="campo">Filtrar propuestas<select value={filtro} onChange={e => setFiltro(e.target.value)}><option value="todos">Todos los estados</option><option value="pendiente">Pendientes</option><option value="aplicada">Aplicadas</option><option value="aceptada">Aclaraciones revisadas</option><option value="rechazada">Rechazadas</option><option value="desactualizada">Desactualizadas</option></select></label>
+      {propuestas.length > 0 && !propuestas.some(p => filtro === 'todos' || p.estado === filtro) && <p className="vacio">No hay propuestas en este estado.</p>}
+      {propuestas.filter(p => filtro === 'todos' || p.estado === filtro).map((propuesta) => {
         const abierta = propuestaAbierta === propuesta.id
+        const comprobacion = comprobarPropuesta(proyecto, propuesta)
+        const ejecutable = propuesta.operaciones.length > 0
+        const comparable = ejecutable && propuesta.estado === 'pendiente' && comprobacion.aplicable
         return (
           <div key={propuesta.id} className={`tarjeta-propuesta ${abierta ? 'abierta' : ''}`}>
             <div className="fila">
@@ -185,10 +193,10 @@ export function PanelRevision(): JSX.Element {
                 {propuesta.titulo}
               </button>
               <span className={`marcador ${propuesta.estado === 'aceptada' || propuesta.estado === 'aplicada' ? 'ok' : propuesta.estado === 'rechazada' ? 'error' : propuesta.estado === 'desactualizada' ? 'aviso' : 'info'}`}>
-                {propuesta.estado}
+                {propuesta.estado === 'aceptada' ? 'revisada' : propuesta.estado}
               </span>
             </div>
-            <div className="chips" style={{ marginTop: 4 }}>
+            <div className="chips" style={{ marginTop: 4 }}><span className="chip">{propuesta.origenIA ? `${propuesta.origenIA.proveedor} · ${propuesta.origenIA.modelo} · ` : 'Origen no registrado · '}Diseño v{propuesta.versionOrigen} · {new Date(propuesta.creadaEn).toLocaleString()}</span><span className="chip">{ejecutable ? 'Cambio propuesto' : 'Pregunta / aclaración'}</span>
               <span className="chip">{propuesta.categoria}</span>
               <span className="chip">prioridad {propuesta.prioridad}</span>
               <span className="chip">v{propuesta.version}</span>
@@ -196,7 +204,43 @@ export function PanelRevision(): JSX.Element {
             </div>
             {abierta && (
               <>
+                <div className="acciones acciones-propuesta">
+                  <button
+                    disabled={!comparable}
+                    onClick={() => {
+                      tienda.setPropuestaEnComparacion(propuesta.id)
+                      tienda.setVista('propuesto')
+                    }}
+                  >
+                    Ver antes/después
+                  </button>
+                  <button
+                    onClick={() => {
+                      tienda.setVista('actual')
+                      tienda.setPropuestaEnComparacion(null)
+                    }}
+                  >
+                    Volver a actual
+                  </button>
+                  <button
+                    className="primario"
+                    disabled={propuesta.estado !== 'pendiente' || !comprobacion.aplicable}
+                    onClick={() => tienda.aceptarPropuesta(propuesta.id)}
+                  >
+                    {ejecutable ? 'Aceptar cambios' : 'Marcar como revisada'}
+                  </button>
+                  <button
+                    className="peligro"
+                    disabled={propuesta.estado !== 'pendiente'}
+                    onClick={() => tienda.rechazarPropuesta(propuesta.id, null)}
+                  >
+                    Rechazar
+                  </button>
+                </div>
                 <div className="explicacion">{propuesta.explicacion}</div>
+                {comparable && <ComparacionPropuesta proyecto={proyecto} propuesta={propuesta} />}
+                {(propuesta.estado === 'pendiente' || propuesta.estado === 'desactualizada') && !comprobacion.aplicable && <div className="estado-contextual error" role="status"><strong>No se puede aplicar</strong><ul>{comprobacion.motivos.map((m, i) => <li key={i}>{m}</li>)}</ul></div>}
+                {!ejecutable && <p className="estado-contextual">Esta aclaración no modifica el diseño. Discútela o márcala como revisada.</p>}
                 <h3>Fundamento</h3>
                 <div className="explicacion">{propuesta.fundamento}</div>
                 {propuesta.supuestos.length > 0 && (
@@ -233,38 +277,6 @@ export function PanelRevision(): JSX.Element {
                   {propuesta.operaciones.length === 0
                     ? 'Sin operaciones estructuradas.'
                     : propuesta.operaciones.map((op) => op.op).join(', ')}
-                </div>
-                <div className="acciones">
-                  <button
-                    onClick={() => {
-                      tienda.setPropuestaEnComparacion(propuesta.id)
-                      tienda.setVista('propuesto')
-                    }}
-                  >
-                    Ver antes/después
-                  </button>
-                  <button
-                    onClick={() => {
-                      tienda.setVista('actual')
-                      tienda.setPropuestaEnComparacion(null)
-                    }}
-                  >
-                    Volver a actual
-                  </button>
-                  <button
-                    className="primario"
-                    disabled={propuesta.estado !== 'pendiente'}
-                    onClick={() => tienda.aceptarPropuesta(propuesta.id)}
-                  >
-                    Aceptar
-                  </button>
-                  <button
-                    className="peligro"
-                    disabled={propuesta.estado !== 'pendiente'}
-                    onClick={() => tienda.rechazarPropuesta(propuesta.id, null)}
-                  >
-                    Rechazar
-                  </button>
                 </div>
                 <div className="campo" style={{ marginTop: 8 }}>
                   <label htmlFor={`discusion-${propuesta.id}`}>Discutir esta propuesta (discutir no la aprueba)</label>
