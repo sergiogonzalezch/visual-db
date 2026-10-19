@@ -2,7 +2,7 @@
 
 Fecha de los trabajos: **2026-10-19**. Consolidación editorial realizada el **19 de octubre de 2026**, sin ejecutar pruebas nuevas ni cambiar sus resultados. Sustituye los informes sueltos de esta fecha.
 
-Los resultados se distinguen por etapa: un fallo inicial y una corrección posterior no son contradictorios. Las cifras corresponden a cada ejecución, no a un único ensayo. Los pendientes operativos vigentes se mantienen exclusivamente en [pendientes](../../pendientes.md); las tablas históricas conservan el corte de su fecha.
+Los resultados se distinguen por etapa: un fallo inicial y una corrección posterior no son contradictorios. Las cifras corresponden a cada ejecución, no a un único ensayo. Los pendientes operativos vigentes se mantienen exclusivamente en [pendientes](pendientes.md); las tablas históricas conservan el corte de su fecha.
 
 ## Contenido
 

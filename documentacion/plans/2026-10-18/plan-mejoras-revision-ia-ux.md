@@ -1,6 +1,6 @@
 # Plan consolidado de mejoras: revisión con IA y UX
 
-> Plan histórico del 18 de octubre. Consulta los [pendientes vigentes](../../pendientes.md) y las [correcciones y pruebas del 19 de octubre](../../pruebas/2026-10-19/informe.md#correcciones); este documento conserva sus resultados originales.
+> Plan histórico del 18 de octubre. Consulta los [pendientes vigentes](../../pruebas/2026-10-19/pendientes.md) y las [correcciones y pruebas del 19 de octubre](../../pruebas/2026-10-19/informe.md#correcciones); este documento conserva sus resultados originales.
 
 Fecha: 18 de octubre de 2026. Estado: correcciones autorizadas e implementadas en el ciclo posterior. Consulta el [informe consolidado, correcciones](../../pruebas/2026-10-18/informe.md#correcciones) para resultados y verificaciones aún pendientes; la matriz original se conserva como referencia de alcance.
 

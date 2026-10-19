@@ -7,7 +7,7 @@ Un único informe consolidado por fecha, con las etapas de diagnóstico, correcc
 | 2026-10-18 | [Auditoría y correcciones](2026-10-18/informe.md) | Persistencia/proveedores, Foco, caso de tienda, regresión, Actual/Propuesto y aprobación. |
 | 2026-10-19 | [Regresión y proveedores reales](2026-10-19/informe.md) | Doce puntos, controles semánticos, accesibilidad, carga, diagnóstico de APIs y contrato corregido. |
 
-Los pendientes de estos informes describen su fecha de corte. La lista operativa actual está únicamente en [pendientes](../pendientes.md). Los planes se conservan en [plans](../plans/README.md).
+Los pendientes de estos informes describen su fecha de corte. La lista operativa actual está únicamente en [pendientes](2026-10-19/pendientes.md). Los planes se conservan en [plans](../plans/README.md).
 
 ## Fuentes y evidencias
 

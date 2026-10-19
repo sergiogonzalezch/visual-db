@@ -1,6 +1,6 @@
-# Exportación de diseños
+# Referencia técnica de exportación
 
-Actualizado el 19 de octubre de 2026. La regresión cubre guardado/exportación por IPC, comparación sin aplicar y modelos grandes; la comprobación con herramientas externas y macOS/Linux permanece pospuesta. Consulta los [pendientes](pendientes.md) y el [informe de pruebas](pruebas/2026-10-19/informe.md#correcciones).
+Actualizado el 19 de octubre de 2026. La regresión cubre guardado/exportación por IPC, comparación sin aplicar y modelos grandes; la comprobación con herramientas externas y macOS/Linux permanece pospuesta. Consulta los [pendientes](../pruebas/2026-10-19/pendientes.md) y el [informe de pruebas](../pruebas/2026-10-19/informe.md#correcciones).
 
 ## Uso
 
@@ -94,4 +94,4 @@ Se ejecutó una instancia oculta y aislada de Electron con datos sintéticos: PN
 
 Pendiente de revisión manual: diálogo completo con teclado/foco, apertura/edición de draw.io en su aplicación y revisión nativa en macOS/Linux. El generador Mermaid y el XML no sustituyen el contrato semántico JSON.
 
-Consulta [el plan completo](plans/2026-10-18/plan-exportacion.md).
+Consulta [el plan completo](../plans/2026-10-18/plan-exportacion.md).

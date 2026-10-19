@@ -6,7 +6,7 @@ No genera SQL ni DDL: trabaja sobre el modelo (entidades, atributos, claves, rel
 
 ## Guías
 
-- **[Índice de documentación](documentacion/README.md)** y **[pendientes por prioridad](documentacion/pendientes.md)**: estado vigente, mejoras y criterios de cierre.
+- **[Índice de documentación](documentacion/README.md)** y **[pendientes por prioridad](documentacion/pruebas/2026-10-19/pendientes.md)**: estado vigente, mejoras y criterios de cierre.
 
 - **[Guía visual paso a paso](documentacion/guia/index.html)**: recorrido ilustrado de proyecto → modelo → reglas → proveedor → IA → aprobación → exportación, con animaciones opcionales y un mapa de funciones filtrable.
 - **[Referencia técnica](documentacion/guia/tecnica.html)**: arquitectura, funciones, contratos IPC, archivos, estados y límites.
@@ -91,7 +91,7 @@ tests/integracion/  # Recorridos de dominio/disco y ensayo local optativo
 
 ## Documentación
 
-Consulta el [índice documental](documentacion/README.md) para el manual, guía visual, referencia técnica y exportación; los [informes por fecha](documentacion/pruebas/README.md) reúnen las auditorías y correcciones. Las planificaciones están en [plans](documentacion/plans/README.md), y los [pendientes](documentacion/pendientes.md) son la única lista operativa vigente.
+Consulta el [índice documental](documentacion/README.md) para el manual, guía visual, referencia técnica y exportación; los [informes por fecha](documentacion/pruebas/README.md) reúnen las auditorías y correcciones. Las planificaciones están en [plans](documentacion/plans/README.md), y los [pendientes](documentacion/pruebas/2026-10-19/pendientes.md) son la única lista operativa vigente.
 
 ## Organización de evidencias
 

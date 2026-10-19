@@ -6,7 +6,7 @@ Visual BD permite diseñar modelos relacionales y revisar su lógica. La IA prop
 
 - [Guía visual paso a paso](guia/index.html): siete etapas, ilustración animada opcional y mapa filtrable de las funciones.
 - [Referencia técnica](guia/tecnica.html): arquitectura, módulos, contratos IPC, estados y limitaciones.
-- [Exportación](exportacion.md): formatos, alcance y contrato documental.
+- [Exportación](tecnica/exportacion.md): formatos, alcance y contrato documental.
 
 Las dos páginas HTML son estáticas y funcionan abriendo `documentacion/guia/index.html` en un navegador, también sin conexión. No acceden a proyectos, proveedores ni credenciales. La reproducción del recorrido es opcional y respeta movimiento reducido. Para servirlas por HTTP local, sirve `documentacion/` y abre `/guia/`; no requieren compilar la aplicación.
 
@@ -290,4 +290,4 @@ El arnés real marca una aclaración o comprueba comparación/bloqueo por riesgo
 
 `node tests/e2e/diagnostico-proveedores.cjs` compara el caso mínimo y la tienda de `tests/fixtures/tienda-prueba.md`. Requiere proveedores disponibles y puede consumir cuota. `QA_SOLO_SONDA=1` limita la ejecución a sondas Gemini; `QA_SOLO_LITE=1` prueba las dos revisiones de Flash Lite. Define y retira esas variables en el entorno del proceso igual que las anteriores; no guardan una preferencia de la aplicación. Las evidencias quedan ignoradas en `artefactos-locales/pruebas/diagnostico-<marca>/`.
 
-Consulta el [índice documental](README.md), los [pendientes vigentes](pendientes.md) y las [correcciones con evidencia final](pruebas/2026-10-19/informe.md#correcciones). Los informes fechados conservan resultados históricos.
+Consulta el [índice documental](README.md), los [pendientes vigentes](pruebas/2026-10-19/pendientes.md) y las [correcciones con evidencia final](pruebas/2026-10-19/informe.md#correcciones). Los informes fechados conservan resultados históricos.
