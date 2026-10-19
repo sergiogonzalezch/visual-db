@@ -1,7 +1,7 @@
 # Plan de producto y arquitectura
 ## Aplicación de escritorio para diseñar y revisar bases de datos visualmente
 
-**Estado:** plan original de referencia; varias funciones ya están implementadas. Consulta el [estado vigente](README.md) y los [pendientes actuales](pendientes.md); este documento conserva la intención inicial.
+**Estado:** plan original de referencia; varias funciones ya están implementadas. Consulta el [estado vigente](../../README.md) y los [pendientes actuales](../../pendientes.md); este documento conserva la intención inicial.
 **Principio central:** la IA propone; el usuario aprueba o rechaza.  
 **Almacenamiento:** local por defecto.  
 **Restricción permanente:** no generar SQL, DDL ni código.

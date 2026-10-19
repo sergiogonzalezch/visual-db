@@ -1,14 +1,14 @@
 # Plan consolidado de mejoras: revisión con IA y UX
 
-> Informe histórico del 18 de octubre. Consulta los [pendientes vigentes](../../pendientes.md) y las [correcciones y pruebas del 19 de octubre](../2026-10-19/correcciones-contrato-y-pruebas.md); este documento conserva sus resultados originales.
+> Plan histórico del 18 de octubre. Consulta los [pendientes vigentes](../../pendientes.md) y las [correcciones y pruebas del 19 de octubre](../../pruebas/2026-10-19/informe.md#correcciones); este documento conserva sus resultados originales.
 
-Fecha: 18 de octubre de 2026. Estado: correcciones autorizadas e implementadas en el ciclo posterior. Consulta `informe-correcciones-revision.md` para resultados y verificaciones aún pendientes; la matriz original se conserva como referencia de alcance.
+Fecha: 18 de octubre de 2026. Estado: correcciones autorizadas e implementadas en el ciclo posterior. Consulta el [informe consolidado, correcciones](../../pruebas/2026-10-18/informe.md#correcciones) para resultados y verificaciones aún pendientes; la matriz original se conserva como referencia de alcance.
 
 ## Objetivo y fuentes
 
 Completar un recorrido confiable: revisar reglas o solicitar revisión con IA → comprender el resultado → comparar cambios → aprobar o resolver preguntas → verificar el diseño guardado.
 
-Fuentes: `informe-revision-ia-ux.md` de esta sesión e `informe-regresion.md` del ciclo anterior. El primero documenta una generación real de Gemini y una aprobación de reglas exitosa, pero también el bloqueo de atributos y las inconsistencias de comparación. El segundo aporta pendientes de Ollama, exportaciones, accesibilidad y regresión integrada.
+Fuentes: [diagnóstico IA/UX](../../pruebas/2026-10-18/informe.md#revision-ia) de esta sesión y [regresión](../../pruebas/2026-10-18/informe.md#regresion) del ciclo anterior. El primero documenta una generación real de Gemini y una aprobación de reglas exitosa, pero también el bloqueo de atributos y las inconsistencias de comparación. El segundo aporta pendientes de Ollama, exportaciones, accesibilidad y regresión integrada.
 
 Se conservarán las funciones actuales, la aprobación humana y la stack. No se propone reescribir proveedores ni persistencia. Si la corrección de identidad o la trazabilidad exige ampliar el formato persistido, se explicará el cambio y su compatibilidad antes de implementarlo; no se reiniciarán credenciales ni proyectos.
 

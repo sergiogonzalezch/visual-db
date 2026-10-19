@@ -28,4 +28,4 @@ Concurrencia y aislamiento por proyecto; historial inverso y referencias FK; val
 
 El contrato de IA usa objetos JSON con `op`. Ollama recibe esquema estructurado y contexto 8192; Gemini mantiene `json_object` con contrato completo como instrucción. Los mensajes 503 y modelos no habilitados están diferenciados. La aplicación no convierte en verdaderas las conclusiones del modelo.
 
-Para evidencia y límites: [estado de los doce puntos](pruebas/2026-10-19/informe-pendientes.md), [correcciones y pruebas finales](pruebas/2026-10-19/correcciones-contrato-y-pruebas.md), [cierre de controles/UI/rendimiento](pruebas/2026-10-19/cierre-7-8-9-11.md).
+Para evidencia y límites: [estado de los doce puntos](pruebas/2026-10-19/informe.md#estado), [correcciones y pruebas finales](pruebas/2026-10-19/informe.md#correcciones), [cierre de controles/UI/rendimiento](pruebas/2026-10-19/informe.md#controles).

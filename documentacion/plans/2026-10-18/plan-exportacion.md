@@ -1,6 +1,6 @@
 # Plan de la función de exportación
 
-> Referencia de diseño/evolución. Estado al 19 de octubre: [índice documental](README.md), [pendientes priorizados](pendientes.md) y [pruebas finales](pruebas/2026-10-19/correcciones-contrato-y-pruebas.md). Los resultados fechados de este documento conservan su contexto.
+> Referencia de diseño/evolución. Estado al 19 de octubre: [índice documental](../../README.md), [pendientes priorizados](../../pendientes.md) y [pruebas finales](../../pruebas/2026-10-19/informe.md#correcciones). Los resultados fechados de este documento conservan su contexto.
 
 Fecha: 18 de octubre de 2026.
 
@@ -8,7 +8,7 @@ Estado: etapas 1–5 implementadas; validación interactiva y apertura externa m
 
 Producto: Visual BD.
 
-El comportamiento disponible se documenta en [Exportación](exportacion.md). Las rutas y requisitos de este plan son la referencia de diseño; consulta ese documento para conocer las limitaciones comprobadas. Ya se incluyen SVG/PNG, Mermaid, draw.io, selección parcial, comparación sin aplicar y anexos documentales de propuestas.
+El comportamiento disponible se documenta en [Exportación](../../exportacion.md). Las rutas y requisitos de este plan son la referencia de diseño; consulta ese documento para conocer las limitaciones comprobadas. Ya se incluyen SVG/PNG, Mermaid, draw.io, selección parcial, comparación sin aplicar y anexos documentales de propuestas.
 
 ## 1. Objetivo
 

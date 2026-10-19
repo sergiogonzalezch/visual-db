@@ -69,7 +69,7 @@ El ejecutador simplificado y los instaladores por sistema siguen pendientes. Los
 
 ## Verificación y límites
 
-La regresión del 19 de octubre aprobó 176 pruebas deterministas, tipado y compilación. Se añadieron pruebas de Electron con perfil aislado (`npm run test:e2e`), casos optativos de rendimiento y una nueva prueba real reducida de Ollama. Los [controles semánticos, accesibilidad básica, reinicios y carga de modelos grandes](documentacion/pruebas/2026-10-19/cierre-7-8-9-11.md) tienen nueva cobertura. Se corrigió el contrato de revisiones y se comprobaron recorridos reales con Mistral y Gemini Flash Lite: revisión, decisión, guardado y reapertura. La aprobación de cambios de negocio generados por IA sigue sin certificar; consulta las [correcciones y pruebas](documentacion/pruebas/2026-10-19/correcciones-contrato-y-pruebas.md). Consulta [el informe y estado de pendientes](documentacion/pruebas/2026-10-19/informe-pendientes.md); estos resultados no garantizan disponibilidad ni calidad semántica de los modelos.
+La regresión del 19 de octubre aprobó 176 pruebas deterministas, tipado y compilación. Se añadieron pruebas de Electron con perfil aislado (`npm run test:e2e`), casos optativos de rendimiento y una nueva prueba real reducida de Ollama. Los [controles semánticos, accesibilidad básica, reinicios y carga de modelos grandes](documentacion/pruebas/2026-10-19/informe.md#controles) tienen nueva cobertura. Se corrigió el contrato de revisiones y se comprobaron recorridos reales con Mistral y Gemini Flash Lite: revisión, decisión, guardado y reapertura. La aprobación de cambios de negocio generados por IA sigue sin certificar; consulta las [correcciones y pruebas](documentacion/pruebas/2026-10-19/informe.md#correcciones). Consulta [el informe y estado de pendientes](documentacion/pruebas/2026-10-19/informe.md#estado); estos resultados no garantizan disponibilidad ni calidad semántica de los modelos.
 
 No se generan SQL, DDL, modelos ORM ni esquemas NoSQL ejecutables. Markdown/JSON sirven como documentación de entrada para otra herramienta o agente. La comparación histórica de propuestas aplicadas no está disponible. macOS/Linux, accesibilidad completa e intercambio en herramientas externas requieren completar sus comprobaciones.
 
@@ -91,17 +91,11 @@ tests/integracion/  # Recorridos de dominio/disco y ensayo local optativo
 
 ## Documentación
 
-- [Correcciones y nueva prueba de revisión IA](documentacion/pruebas/2026-10-18/informe-correcciones-revision.md) — aprobación de atributos, comparación de solo lectura, alertas y resultados reales de Gemini/Ollama.
-- [Instrucciones completas](documentacion/INSTRUCCIONES.md) — uso, atajos, configuración de IA, archivos y recuperación.
-- [Plan de la aplicación](documentacion/plan-aplicacion-visual-bases-de-datos.md) — alcance, principios y arquitectura.
-- [Auditoría y cambios](documentacion/auditoria-mejoras.md) — causas, correcciones y verificaciones.
-- [Identidad visual](resources/README.md) — icono C, formatos y origen de los recursos.
-- [Exportación](documentacion/exportacion.md) — uso, contrato, formatos y limitaciones.
-- [Plan de exportación](documentacion/plan-exportacion.md) — alcance y etapas siguientes.
+Consulta el [índice documental](documentacion/README.md) para el manual, guía visual, referencia técnica y exportación; los [informes por fecha](documentacion/pruebas/README.md) reúnen las auditorías y correcciones. Las planificaciones están en [plans](documentacion/plans/README.md), y los [pendientes](documentacion/pendientes.md) son la única lista operativa vigente.
 
 ## Organización de evidencias
 
-Los informes y planes Markdown se versionan en `documentacion/pruebas/`; las entradas sintéticas están en `tests/fixtures/`. Proyectos de QA, JSON de proveedores, exportaciones, capturas y logs se guardan en `artefactos-locales/pruebas/<fecha>/`, ignorada por Git. Los iconos y recursos necesarios para la app/guía sí se incluyen. Consulta [la política de archivos de pruebas](documentacion/pruebas/README.md).
+Los informes Markdown se versionan en `documentacion/pruebas/<fecha>/informe.md` y los planes en `documentacion/plans/<fecha>/`; las entradas sintéticas están en `tests/fixtures/`. Proyectos de QA, JSON de proveedores, exportaciones, capturas y logs se guardan en `artefactos-locales/pruebas/<fecha>/`, ignorada por Git. Los iconos y recursos necesarios para la app/guía sí se incluyen. Consulta [la política de archivos de pruebas](documentacion/pruebas/README.md).
 
 ## Licencia
 
